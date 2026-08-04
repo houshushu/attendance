@@ -375,6 +375,12 @@ input[type="file"]{display:none}
 <script>
 (function(){
   "use strict";
+  // 禁止双指缩放手势（兼容微信等内置浏览器）
+  document.addEventListener("touchmove", function(e){
+    if(e.touches && e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
+
   var STORE_KEY = "attendance_v1";
   var PROJECT_KEY = "attendance_project";
   var NAME_KEY = "attendance_name";

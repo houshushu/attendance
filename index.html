@@ -1374,7 +1374,7 @@ body{
       .catch(function(){ setAuthStatus("网络错误，请重试"); });
   }
   function applyAuthName(){
-    if(!name && auth && auth.name){
+    if(auth && auth.name){
       name = auth.name;
       saveName();
       renderName();
@@ -1491,8 +1491,9 @@ body{
         }
         if(Object.keys(data).length === 0){
           data = migrate(cp.records || {});
-          if(cp.name !== undefined) name = String(cp.name || "");
-          if(cp.project !== undefined) projectName = String(cp.project || "");
+          if(cp.name) name = String(cp.name);
+          if(!name && auth && auth.name) name = auth.name;
+          if(cp.project) projectName = String(cp.project);
           persist();
           saveName();
           saveProject();
@@ -1514,8 +1515,11 @@ body{
       cloudPush();
     }else if(mode === "cloud"){
       data = migrate(cp.records || {});
-      if(cp.name !== undefined) name = String(cp.name || "");
-      if(cp.project !== undefined) projectName = String(cp.project || "");
+      if(cp.name) name = String(cp.name);
+      if(!name && auth && auth.name) name = auth.name;
+      if(cp.project) projectName = String(cp.project);
+      saveName();
+      saveProject();
       persist();
       saveName();
       saveProject();

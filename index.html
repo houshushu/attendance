@@ -1040,14 +1040,20 @@ input[type="file"]{display:none}
       if(r.otHours) otTotal += r.otHours;
     });
     rows.push(["", "", "", "", ""]);
-    if(name) rows.push(["", "", "", "", "姓名：" + name]);
     rows.push(["", "", "", "", "出勤总天数：" + attendedCount + " 天"]);
     rows.push(["", "", "", "", "加班总小时：" + (Math.round(otTotal*100)/100) + " 小时"]);
     var headerRow0 = 0;
-    if(projectName){
-      rows.unshift([projectName]);
-      headerRow0 = 1;
+    var ymInfo = keyToYMD(filterYm + "-01");
+    var subtitleParts = [];
+    if(name) subtitleParts.push("姓名：" + name);
+    if(projectName) subtitleParts.push("项目：" + projectName);
+    subtitleParts.push(isMonth ? "月份：" + ymInfo.y + "年" + ymInfo.m + "月" : "范围：全部记录");
+    var titles = [["考勤记录表"]];
+    if(subtitleParts.length) titles.push([subtitleParts.join(" · ")]);
+    for(var ti = titles.length - 1; ti >= 0; ti--){
+      rows.unshift(titles[ti]);
     }
+    headerRow0 = titles.length;
     var dataEndRow = headerRow0 + 1 + recordCount;
     var styleInfo = buildStyleInfo(rows, headerRow0, dataEndRow);
     var files = {

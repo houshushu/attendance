@@ -871,7 +871,7 @@ body{
   }
 
   function renderUndo(){
-    $("btnUndo").style.display = lastSnapshot ? "block" : "none";
+    $("undoRow").style.display = lastSnapshot ? "block" : "none";
   }
 
   function escHtml(s){
@@ -1386,6 +1386,7 @@ body{
     auth = null;
     renderAccount();
     setSyncDot(false);
+    setAuthMode("login");
   }
   function refreshSession(){
     if(!auth || !auth.refresh_token) return Promise.resolve(false);

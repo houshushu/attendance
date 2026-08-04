@@ -124,6 +124,7 @@ body{
 .btn-danger{background:var(--danger-soft);color:var(--red)}
 .btn-danger:active{opacity:.8}
 .btn-sm{width:auto;display:inline-block;padding:9px 14px;font-size:13px;border-radius:11px}
+.btn-arrow{width:46px;flex-shrink:0;padding:9px 0;font-size:15px}
 .field{margin-bottom:10px}
 .field label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px}
 .field input[type="date"],.field input[type="number"],.field input[type="text"],.field input[type="password"]{
@@ -339,10 +340,9 @@ body{
       <div class="field">
         <label>日期</label>
         <div class="date-row">
+          <button class="btn btn-ghost btn-sm btn-arrow" id="btnPrev">◀</button>
           <input type="date" id="recDate">
-          <button class="btn btn-ghost btn-sm" id="btnYesterday">昨天</button>
-          <button class="btn btn-ghost btn-sm" id="btnToday">今天</button>
-          <button class="btn btn-ghost btn-sm" id="btnTomorrow">明天</button>
+          <button class="btn btn-ghost btn-sm btn-arrow" id="btnNext">▶</button>
         </div>
       </div>
 
@@ -1487,13 +1487,14 @@ body{
     editingDate = this.value;
     renderEditor();
   });
-  $("btnToday").addEventListener("click", function(){
+  $("btnPrev").addEventListener("click", function(){ shiftDate(-1); });
+  $("btnNext").addEventListener("click", function(){ shiftDate(1); });
+  $("editDate").addEventListener("click", function(){
     fromHistory = false;
     editingDate = todayKey();
     renderEditor();
+    toast("已回到今天");
   });
-  $("btnYesterday").addEventListener("click", function(){ shiftDate(-1); });
-  $("btnTomorrow").addEventListener("click", function(){ shiftDate(1); });
   function shiftDate(days){
     var t = keyToYMD(editingDate);
     var d = new Date(t.y, t.m - 1, t.d + days);

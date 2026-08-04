@@ -106,7 +106,7 @@ body{
 }
 .btn:active{opacity:.8}
 .btn-round{
-  width:148px;height:148px;border-radius:50%;margin:22px auto 22px;
+  width:148px;height:148px;border-radius:50%;margin:30px auto 30px;
   display:flex;align-items:center;justify-content:center;
   background:var(--green);color:#fff;font-size:20px;font-weight:700;border:none;cursor:pointer;
   box-shadow:0 0 0 10px rgba(14,159,110,.12),0 6px 20px rgba(14,159,110,.22);
@@ -190,6 +190,14 @@ body{
   transition:background .15s ease,color .15s ease;
 }
 .view-toggle button.active{background:var(--card);color:var(--accent);font-weight:600;box-shadow:0 1px 3px rgba(31,36,41,.08)}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:14px}
+.switch-control{display:inline-flex;cursor:pointer}
+.switch-control input{display:none}
+.track{width:46px;height:26px;border-radius:999px;background:var(--track);position:relative;transition:background .2s;flex-shrink:0}
+.track::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.switch-control input:checked + .track{background:var(--accent)}
+.switch-control input:checked + .track::after{left:23px}
+.gh-status{font-size:12px;color:var(--muted);margin-top:8px;min-height:16px;word-break:break-all}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;color:var(--muted);font-size:11px;margin-bottom:6px}
 .cal-title{text-align:center;font-size:15px;font-weight:700;margin-bottom:10px}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -400,6 +408,26 @@ body{
         <button class="btn btn-ghost" id="btnCopyBackup">复制备份</button>
         <button class="btn btn-ghost" id="btnPasteImport">粘贴导入</button>
       </div>
+      <div class="field">
+        <label>GitHub 仓库（账号/仓库名）</label>
+        <input type="text" id="ghRepo" placeholder="如：houshushu/attendance-data" autocomplete="off" maxlength="100">
+      </div>
+      <div class="field">
+        <label>GitHub 令牌（仅存本机，用于同步数据）</label>
+        <input type="password" id="ghToken" placeholder="粘贴 GitHub 令牌" autocomplete="off" maxlength="120">
+      </div>
+      <div class="exp-row">
+        <button class="btn btn-ghost" id="btnGhUpload">上传到 GitHub</button>
+        <button class="btn btn-ghost" id="btnGhDownload">从 GitHub 恢复</button>
+      </div>
+      <div class="switch-row">
+        <span>自动同步到 GitHub</span>
+        <label class="switch-control">
+          <input type="checkbox" id="ghAutoSync">
+          <span class="track"></span>
+        </label>
+      </div>
+      <div class="gh-status" id="ghStatus"></div>
       <div class="exp-row">
         <button class="btn btn-danger" id="btnClearAll">删除所有记录</button>
       </div>
@@ -473,6 +501,8 @@ body{
   var saveTimer = null;
   var saveHintTimer = null;
   var viewMode = "calendar";
+  var ghAuto = false;
+  var ghTimer = null;
 
   // ---------- 基础工具 ----------
   function pad2(n){ return n < 10 ? "0" + n : "" + n; }
@@ -784,6 +814,10 @@ body{
         delete data[editingDate];
       }
       persist();
+      if(ghAuto && ghRepo() && ghToken()){
+        clearTimeout(ghTimer);
+        ghTimer = setTimeout(function(){ ghUpload(true); }, 2500);
+      }
       renderAll();
       showSaved();
     }
@@ -1144,6 +1178,68 @@ body{
     }
   }
 
+  // ---------- GitHub 同步 ----------
+  var GH_TOKEN_KEY = "attendance_gh_token";
+  var GH_REPO_KEY = "attendance_gh_repo";
+  var GH_AUTOSYNC_KEY = "attendance_gh_autosync";
+
+  function ghToken(){ return $("ghToken").value.trim(); }
+  function ghRepo(){ return $("ghRepo").value.trim(); }
+  function setGhStatus(msg){ $("ghStatus").textContent = msg; }
+  function b64Encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64Decode(b64){ return decodeURIComponent(escape(atob(b64))); }
+  function ghHeaders(){
+    return { "Authorization": "Bearer " + ghToken(), "Accept": "application/vnd.github+json" };
+  }
+  function ghUpload(quiet){
+    clearTimeout(ghTimer);
+    var repo = ghRepo();
+    if(!repo || repo.indexOf("/") < 0){ if(!quiet) setGhStatus("请填写仓库名，格式：账号/仓库名"); return; }
+    if(!ghToken()){ if(!quiet) setGhStatus("请先填写 GitHub 令牌"); return; }
+    if(!quiet) setGhStatus("正在上传…");
+    var body = JSON.stringify({ name: name, project: projectName, records: data }, null, 2);
+    fetch("https://api.github.com/repos/" + repo + "/contents/data.json", { headers: ghHeaders() })
+      .then(function(res){
+        if(res.status === 404) return null;
+        if(!res.ok) throw new Error("查询失败(" + res.status + ")");
+        return res.json();
+      })
+      .then(function(existing){
+        var payload = { message: "考勤数据同步 " + todayKey(), content: b64Encode(body) };
+        if(existing && existing.sha) payload.sha = existing.sha;
+        return fetch("https://api.github.com/repos/" + repo + "/contents/data.json", {
+          method: "PUT",
+          headers: ghHeaders(),
+          body: JSON.stringify(payload)
+        });
+      })
+      .then(function(res){
+        if(!res.ok) throw new Error("上传失败(" + res.status + ")");
+        setGhStatus(quiet ? "已自动同步" : "已上传到 GitHub（" + todayKey() + "）");
+      })
+      .catch(function(e){ if(!quiet) setGhStatus("同步失败：" + e.message); });
+  }
+  function ghDownload(){
+    var repo = ghRepo();
+    if(!repo || repo.indexOf("/") < 0){ setGhStatus("请填写仓库名，格式：账号/仓库名"); return; }
+    if(!ghToken()){ setGhStatus("请先填写 GitHub 令牌"); return; }
+    setGhStatus("正在下载…");
+    fetch("https://api.github.com/repos/" + repo + "/contents/data.json", { headers: ghHeaders() })
+      .then(function(res){
+        if(res.status === 404) throw new Error("GitHub 上还没有数据，请先上传");
+        if(!res.ok) throw new Error("下载失败(" + res.status + ")");
+        return res.json();
+      })
+      .then(function(json){
+        var obj = JSON.parse(b64Decode(json.content));
+        var newFormat = obj.records !== undefined;
+        if(!confirm("从 GitHub 恢复会覆盖本地数据，确定继续吗？")){ setGhStatus("已取消"); return; }
+        applyImport(newFormat ? obj.records : obj, newFormat ? String(obj.project || "") : null, newFormat ? String(obj.name || "") : null, "overwrite");
+        setGhStatus("已从 GitHub 恢复");
+      })
+      .catch(function(e){ setGhStatus("恢复失败：" + e.message); });
+  }
+
   // ---------- Toast ----------
   var toastTimer = null;
   function toast(msg){
@@ -1337,6 +1433,19 @@ body{
     $("confirmModal").style.display = "none";
     toast("已删除全部记录（可点“撤销上一步”找回）");
   });
+  $("ghRepo").addEventListener("change", function(){
+    try{ localStorage.setItem(GH_REPO_KEY, this.value.trim()); }catch(e){}
+  });
+  $("ghToken").addEventListener("change", function(){
+    try{ localStorage.setItem(GH_TOKEN_KEY, this.value.trim()); }catch(e){}
+  });
+  $("ghAutoSync").addEventListener("change", function(){
+    ghAuto = this.checked;
+    try{ localStorage.setItem(GH_AUTOSYNC_KEY, ghAuto ? "1" : "0"); }catch(e){}
+    setGhStatus(ghAuto ? "已开启自动同步（每次改动后自动上传）" : "已关闭自动同步");
+  });
+  $("btnGhUpload").addEventListener("click", function(){ ghUpload(false); });
+  $("btnGhDownload").addEventListener("click", ghDownload);
 
   document.querySelectorAll(".nav-item").forEach(function(btn){
     btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
@@ -1349,6 +1458,14 @@ body{
     });
   }
 
+  (function loadGhSettings(){
+    try{
+      $("ghRepo").value = localStorage.getItem(GH_REPO_KEY) || "houshushu/attendance-data";
+      $("ghToken").value = localStorage.getItem(GH_TOKEN_KEY) || "";
+      ghAuto = localStorage.getItem(GH_AUTOSYNC_KEY) === "1";
+      $("ghAutoSync").checked = ghAuto;
+    }catch(e){}
+  })();
   renderProject();
   renderAll();
   (function remindBackup(){

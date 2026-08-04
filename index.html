@@ -319,9 +319,9 @@ body{
       </div>
       <button class="btn btn-primary" id="btnAuthMain">登录</button>
       <div class="sync-status" id="authStatus"></div>
-      <div class="login-foot">
-        <button class="text-btn" id="btnAuthSwitch">注册</button>
-      </div>
+  <div class="login-foot">
+    <button class="text-btn" id="btnAuthSwitch">立即注册</button>
+  </div>
     </div>
   </div>
 
@@ -1634,7 +1634,7 @@ body{
     authMode = mode;
     $("inviteWrap").style.display = mode === "register" ? "block" : "none";
     $("btnAuthMain").textContent = mode === "register" ? "注册" : "登录";
-    $("btnAuthSwitch").textContent = mode === "register" ? "登录" : "注册";
+    $("btnAuthSwitch").textContent = mode === "register" ? "登录" : "立即注册";
     setAuthStatus("");
   }
   $("btnAuthMain").addEventListener("click", function(){

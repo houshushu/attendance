@@ -837,13 +837,14 @@ body{
   function renderRecent(){
     var html = "";
     var d = new Date();
+    d.setDate(d.getDate() - 6);
     var today = todayKey();
     for(var i = 0; i < 7; i++){
       var k = dateKey(d.getFullYear(), d.getMonth()+1, d.getDate());
       var r = data[k];
       var cls = "recent-cell" + (r && r.attended ? " on" : "") + (k === today ? " today" : "");
       html += '<button class="' + cls + '" data-key="' + k + '"><span class="rw">' + WEEKS[d.getDay()] + '</span><span>' + d.getDate() + '</span></button>';
-      d.setDate(d.getDate() - 1);
+      d.setDate(d.getDate() + 1);
     }
     $("recentBox").innerHTML = html;
   }

@@ -32,8 +32,6 @@
   --ghost-bg:#f1f1ee;
   --ghost-active:#e8e8e3;
   --track:#ddddd7;
-  --hero-bg:#e8f7ef;
-  --hero-border:#cde8da;
   --chip-done:#e2f5ea;
   --danger-soft:#fdecec;
   --note-text:#5b6472;
@@ -60,8 +58,6 @@
     --ghost-bg:#262b31;
     --ghost-active:#2e343c;
     --track:#3a4149;
-    --hero-bg:rgba(47,211,154,.13);
-    --hero-border:rgba(47,211,154,.3);
     --chip-done:rgba(47,211,154,.18);
     --danger-soft:rgba(240,113,120,.16);
     --note-text:#a4abb6;
@@ -90,7 +86,6 @@ body{
   margin-bottom:14px;
   box-shadow:0 2px 10px rgba(31,36,41,.05);
 }
-.card.hero{background:var(--hero-bg);border-color:var(--hero-border)}
 .card h2{margin:0 0 14px;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.5px}
 .date-line{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .date-big{font-size:24px;font-weight:700;letter-spacing:.5px}
@@ -234,7 +229,7 @@ input[type="file"]{display:none}
 
   <!-- 打卡页 -->
   <section id="tab-clock" class="tab active">
-    <div class="card hero">
+    <div class="card">
       <div class="date-line">
         <div>
           <span id="editDate" class="date-big"></span>

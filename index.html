@@ -83,6 +83,8 @@ body{
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 14px}
 .brand{font-size:17px;font-weight:700;letter-spacing:1px}
 .subtle{color:var(--muted);font-size:11px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.sync-dot.ok{background:var(--accent)}
 .card{
   background:var(--card);
   border:1px solid var(--card-border);
@@ -130,6 +132,13 @@ body{
   outline:none;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
 }
 .field input:focus{border-color:var(--accent);background:var(--card);box-shadow:0 0 0 3px rgba(14,159,110,.12)}
+.quick-row{display:flex;gap:8px;margin-top:8px}
+.quick-chip{
+  flex:1;min-width:0;border:1px solid var(--divider-2);background:var(--soft-bg);
+  color:var(--text);border-radius:9px;padding:7px 0;font-size:13px;cursor:pointer;
+  transition:background .15s ease,color .15s ease;
+}
+.quick-chip:active{background:var(--accent-soft);color:var(--accent)}
 .dropdown{position:relative}
 .dropdown-btn{
   width:100%;height:46px;border:1px solid var(--soft-border);border-radius:13px;
@@ -227,6 +236,7 @@ body{
   border-radius:20px;padding:24px;box-shadow:0 8px 28px rgba(20,22,26,.08);
 }
 .login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:20px;letter-spacing:1px}
+.login-foot{display:flex;justify-content:flex-end;margin-top:6px}
 .modal{
   width:100%;max-width:420px;background:var(--card);border:1px solid var(--card-border);
   border-radius:18px;padding:18px;box-shadow:0 12px 32px rgba(20,22,26,.18);
@@ -287,6 +297,7 @@ body{
 <div id="app">
   <header class="topbar">
     <div class="brand">考勤记录</div>
+    <span class="sync-dot" id="syncDot" title="同步状态"></span>
   </header>
 
   <div id="loginGate" class="login-gate">
@@ -300,13 +311,13 @@ body{
         <label>密码</label>
         <input type="password" id="authPassword" placeholder="输入密码" autocomplete="off" maxlength="50">
       </div>
-      <div class="field">
+      <div class="field" id="inviteWrap" style="display:none">
         <label>邀请码（注册时需要）</label>
         <input type="text" id="authCode" placeholder="输入邀请码" autocomplete="off" maxlength="20">
       </div>
-      <div class="exp-row">
-        <button class="btn btn-primary" id="btnLogin">登录</button>
-        <button class="btn btn-ghost" id="btnSignup">注册</button>
+      <button class="btn btn-primary" id="btnAuthMain">登录</button>
+      <div class="login-foot">
+        <button class="text-btn" id="btnAuthSwitch">注册</button>
       </div>
       <div class="sync-status" id="authStatus"></div>
     </div>
@@ -327,7 +338,9 @@ body{
         <label>日期</label>
         <div class="date-row">
           <input type="date" id="recDate">
+          <button class="btn btn-ghost btn-sm" id="btnYesterday">昨天</button>
           <button class="btn btn-ghost btn-sm" id="btnToday">今天</button>
+          <button class="btn btn-ghost btn-sm" id="btnTomorrow">明天</button>
         </div>
       </div>
 
@@ -336,6 +349,14 @@ body{
       <div class="field">
         <label>加班时长（小时，不填表示无加班）</label>
         <input type="number" id="otHours" min="0" step="0.5" placeholder="如：2 或 2.5">
+        <div class="quick-row" id="otQuick">
+          <button class="quick-chip" data-ot="0.5">0.5</button>
+          <button class="quick-chip" data-ot="1">1</button>
+          <button class="quick-chip" data-ot="1.5">1.5</button>
+          <button class="quick-chip" data-ot="2">2</button>
+          <button class="quick-chip" data-ot="2.5">2.5</button>
+          <button class="quick-chip" data-ot="3">3</button>
+        </div>
       </div>
       <div id="otSum" class="sum-line" style="display:none">
         <span>本次加班</span>
@@ -1276,6 +1297,7 @@ body{
     clearAuth();
     auth = null;
     renderAccount();
+    setSyncDot(false);
   }
   function refreshSession(){
     if(!auth || !auth.refresh_token) return Promise.resolve(false);
@@ -1314,6 +1336,9 @@ body{
       updated_at: new Date().toISOString()
     };
   }
+  function setSyncDot(ok){
+    $("syncDot").classList.toggle("ok", !!ok);
+  }
   function cloudPush(retried){
     clearTimeout(cloudTimer);
     if(!auth) return;
@@ -1331,8 +1356,9 @@ body{
           });
         }
         if(!res.ok) throw new Error("同步失败(" + res.status + ")");
+        setSyncDot(true);
       })
-      .catch(function(){});
+      .catch(function(){ setSyncDot(false); });
   }
   var pendingCloud = null;
   function stableStringify(v){
@@ -1365,6 +1391,7 @@ body{
         var cp = rows[0].payload;
         var local = { name: name, project: projectName, records: data };
         if(stableStringify(cp) === stableStringify(local)){
+          setSyncDot(true);
           return;
         }
         if(Object.keys(data).length === 0){
@@ -1375,12 +1402,14 @@ body{
           saveName();
           saveProject();
           renderAll();
+          setSyncDot(true);
           return;
         }
         pendingCloud = cp;
         $("syncModal").style.display = "flex";
+        setSyncDot(false);
       })
-      .catch(function(){});
+      .catch(function(){ setSyncDot(false); });
   }
   function applySyncChoice(mode){
     if(!pendingCloud) return;
@@ -1396,6 +1425,7 @@ body{
       saveName();
       saveProject();
       renderAll();
+      setSyncDot(true);
     }else if(mode === "local"){
       cloudPush();
     }
@@ -1460,6 +1490,15 @@ body{
     editingDate = todayKey();
     renderEditor();
   });
+  $("btnYesterday").addEventListener("click", function(){ shiftDate(-1); });
+  $("btnTomorrow").addEventListener("click", function(){ shiftDate(1); });
+  function shiftDate(days){
+    var t = keyToYMD(editingDate);
+    var d = new Date(t.y, t.m - 1, t.d + days);
+    editingDate = dateKey(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    fromHistory = false;
+    renderEditor();
+  }
   $("btnClock").addEventListener("click", function(){
     snapshot();
     var r = currentFields();
@@ -1488,6 +1527,12 @@ body{
     debounceSave();
   });
   $("otHours").addEventListener("change", saveCurrent);
+  $("otQuick").addEventListener("click", function(e){
+    var b = e.target.closest(".quick-chip");
+    if(!b) return;
+    $("otHours").value = b.getAttribute("data-ot");
+    saveCurrent();
+  });
   $("note").addEventListener("input", debounceSave);
   $("note").addEventListener("change", saveCurrent);
   window.addEventListener("pagehide", saveCurrent);
@@ -1582,8 +1627,20 @@ body{
     pendingCloud = null;
     $("syncModal").style.display = "none";
   });
-  $("btnLogin").addEventListener("click", signIn);
-  $("btnSignup").addEventListener("click", signUp);
+  var authMode = "login";
+  function setAuthMode(mode){
+    authMode = mode;
+    $("inviteWrap").style.display = mode === "register" ? "block" : "none";
+    $("btnAuthMain").textContent = mode === "register" ? "注册" : "登录";
+    $("btnAuthSwitch").textContent = mode === "register" ? "登录" : "注册";
+    setAuthStatus("");
+  }
+  $("btnAuthMain").addEventListener("click", function(){
+    if(authMode === "register") signUp(); else signIn();
+  });
+  $("btnAuthSwitch").addEventListener("click", function(){
+    setAuthMode(authMode === "register" ? "login" : "register");
+  });
   $("btnLogout").addEventListener("click", signOut);
 
   document.querySelectorAll(".nav-item").forEach(function(btn){

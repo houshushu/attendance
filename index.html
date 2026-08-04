@@ -163,33 +163,22 @@ body{
   padding:9px 12px;margin-bottom:12px;font-size:13px;
 }
 .sum-line b{color:var(--accent);font-size:14px;font-weight:700}
-.switch{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
-.switch .txt{font-size:15px;font-weight:500}
-.switch-control{display:inline-flex;cursor:pointer}
-.switch-control input{display:none}
-.track{
-  width:46px;height:26px;border-radius:999px;background:var(--track);
-  position:relative;transition:background .2s;flex-shrink:0;
-}
-.track::after{
-  content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;
-  border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.18);
-}
-.switch-control input:checked + .track{background:var(--accent)}
-.switch-control input:checked + .track::after{left:23px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center}
 .stats .item{background:var(--soft-2);border:1px solid var(--divider-2);border-radius:14px;padding:14px 6px}
 .stats .num{font-size:22px;font-weight:700;color:var(--text);letter-spacing:.5px}
 .stats .label{font-size:11px;color:var(--muted);margin-top:5px}
-.trend{display:flex;gap:20px}
-.trend-col{flex:1}
-.trend-month{font-size:13px;font-weight:700;text-align:center;margin-bottom:10px}
-.trend-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.trend-label{font-size:11px;color:var(--muted);width:24px;flex-shrink:0}
-.trend-bar{flex:1;height:14px;background:var(--soft-2);border:1px solid var(--divider-2);border-radius:7px;overflow:hidden}
-.trend-bar i{display:block;height:100%;border-radius:7px;background:var(--accent)}
-.trend-bar i.bar-ot{background:var(--red)}
-.trend-val{font-size:11px;color:var(--text);width:54px;text-align:right;flex-shrink:0}
+.trend{display:flex;gap:10px;padding-top:8px}
+.trend-col{flex:1;display:flex;flex-direction:column;align-items:center}
+.trend-bars{display:flex;gap:14px;align-items:flex-end;height:100px}
+.trend-bar-v{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;width:24px}
+.trend-bar-v .tv{font-size:10px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1}
+.trend-bar-v i{display:block;width:100%;height:0;border-radius:6px 6px 2px 2px;background:var(--accent)}
+.trend-bar-v i.ot{background:var(--red)}
+.trend-bar-v .tl{font-size:10px;color:var(--muted);margin-top:4px}
+.trend-month{font-size:13px;font-weight:700;margin-top:8px;text-align:center}
+.trend-legend{display:flex;justify-content:center;gap:16px;margin-top:12px;color:var(--muted);font-size:11px}
+.trend-legend .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px;vertical-align:middle}
+.trend-legend .dot.ot{background:var(--red)}
 .exp-row{display:flex;gap:10px;margin-top:14px}
 .exp-row .btn{flex:1;min-width:0;font-size:14px;padding:11px 0}
 .exp-row + .exp-row{margin-top:10px}
@@ -310,23 +299,13 @@ body{
 
       <button id="btnClock" class="btn btn-round">打卡</button>
 
-      <div class="switch">
-        <span class="txt">加班</span>
-        <label class="switch-control">
-          <input type="checkbox" id="otSwitch">
-          <span class="track"></span>
-        </label>
+      <div class="field">
+        <label>加班时长（小时，不填表示无加班）</label>
+        <input type="number" id="otHours" min="0" step="0.5" placeholder="如：2 或 2.5">
       </div>
-
-      <div id="otFields" style="display:none">
-        <div class="field">
-          <label>加班时长（小时）</label>
-          <input type="number" id="otHours" min="0" step="0.5" placeholder="如：2 或 2.5">
-        </div>
-        <div id="otSum" class="sum-line" style="display:none">
-          <span>本次加班</span>
-          <b id="otSumVal"></b>
-        </div>
+      <div id="otSum" class="sum-line" style="display:none">
+        <span>本次加班</span>
+        <b id="otSumVal"></b>
       </div>
 
       <div class="field">
@@ -534,7 +513,7 @@ body{
         var mins = (+t2[0])*60 + (+t2[1]) - ((+t1[0])*60 + (+t1[1]));
         if(mins > 0) r.otHours = Math.round(mins/60*100)/100;
       }
-      if(r.otHours || r.otStart || r.otEnd) r.otOn = true;
+      delete r.otOn;
       delete r.checkIn; delete r.checkOut; delete r.otStart; delete r.otEnd; delete r.date;
     });
     return obj;
@@ -579,19 +558,16 @@ body{
     chip.textContent = attended ? "已打卡" : "未打卡";
     chip.className = "status-chip" + (attended ? " done" : "");
 
-    var otOn = !!r.otOn;
-    $("otSwitch").checked = otOn;
-    $("otFields").style.display = otOn ? "block" : "none";
     $("otHours").value = r.otHours || "";
 
     $("note").value = r.note || "";
-    $("deleteRow").style.display = (fromHistory && (attended || otOn || r.otHours || r.note)) ? "block" : "none";
+    $("deleteRow").style.display = (fromHistory && (attended || r.otHours || r.note)) ? "block" : "none";
     updateOtSum();
   }
 
   function updateOtSum(){
     var v = parseFloat($("otHours").value);
-    var show = $("otSwitch").checked && !isNaN(v) && v > 0;
+    var show = !isNaN(v) && v > 0;
     $("otSum").style.display = show ? "flex" : "none";
     $("otSumVal").textContent = show ? (Math.round(v*100)/100) + " 小时" : "";
   }
@@ -651,7 +627,7 @@ body{
       var r = data[k];
       var tags = "";
       if(r.attended) tags += '<span class="tag on">已打卡</span>';
-      if(r.otOn) tags += '<span class="tag ot">加班' + (r.otHours ? " " + r.otHours + "小时" : "") + '</span>';
+      if(r.otHours) tags += '<span class="tag ot">加班 ' + r.otHours + "小时</span>";
       html += '<button class="rec" data-key="' + k + '">'
         + '<div class="rec-top"><div><span class="rec-date">' + displayDate(k)
         + '</span><span class="rec-week">' + weekday(k) + '</span></div></div>'
@@ -711,7 +687,7 @@ body{
   }
 
   function renderTrend(){
-    var months = [monthBefore(filterYm), filterYm];
+    var months = [monthBefore(monthBefore(filterYm)), monthBefore(filterYm), filterYm];
     var items = months.map(function(ym){
       var ymDate = keyToYMD(ym + "-01");
       var days = 0, ot = 0;
@@ -721,21 +697,24 @@ body{
         if(r.attended) days++;
         if(r.otHours) ot += r.otHours;
       });
-      return { label: ymDate.y + "年" + ymDate.m + "月", days: days, ot: Math.round(ot*100)/100 };
+      return { label: ymDate.m + "月", days: days, ot: Math.round(ot*100)/100 };
     });
-    var maxDays = Math.max(1, items[0].days, items[1].days);
-    var maxOt = Math.max(1, items[0].ot, items[1].ot);
+    var maxDays = Math.max(1, items[0].days, items[1].days, items[2].days);
+    var maxOt = Math.max(1, items[0].ot, items[1].ot, items[2].ot);
     var html = '<div class="trend">';
     items.forEach(function(it){
-      var dw = Math.round(it.days / maxDays * 100);
-      var ow = Math.round(it.ot / maxOt * 100);
+      var dh = Math.round(it.days / maxDays * 100);
+      var oh = Math.round(it.ot / maxOt * 100);
       html += '<div class="trend-col">'
+        + '<div class="trend-bars">'
+        + '<div class="trend-bar-v"><span class="tv">' + it.days + '</span><i style="height:' + dh + '%"></i><span class="tl">出勤</span></div>'
+        + '<div class="trend-bar-v"><span class="tv">' + it.ot + '</span><i class="ot" style="height:' + oh + '%"></i><span class="tl">加班</span></div>'
+        + '</div>'
         + '<div class="trend-month">' + it.label + '</div>'
-        + '<div class="trend-row"><span class="trend-label">出勤</span><div class="trend-bar"><i style="width:' + dw + '%"></i></div><span class="trend-val">' + it.days + '天</span></div>'
-        + '<div class="trend-row"><span class="trend-label">加班</span><div class="trend-bar"><i class="bar-ot" style="width:' + ow + '%"></i></div><span class="trend-val">' + it.ot + '小时</span></div>'
         + '</div>';
     });
     html += '</div>';
+    html += '<div class="trend-legend"><span><i class="dot"></i>出勤（天）</span><span><i class="dot ot"></i>加班（小时）</span></div>';
     $("trendBox").innerHTML = html;
   }
 
@@ -784,14 +763,8 @@ body{
   function currentFields(){
     var existing = data[editingDate] || {};
     var r = { attended: !!existing.attended };
-    r.otOn = $("otSwitch").checked;
     var v = parseFloat($("otHours").value);
-    if(r.otOn && $("otHours").value !== "" && (isNaN(v) || v <= 0)){
-      toast("请填写正确的加班时长");
-      r.otHours = null;
-    }else{
-      r.otHours = (r.otOn && !isNaN(v) && v > 0) ? Math.round(v*100)/100 : null;
-    }
+    r.otHours = (!isNaN(v) && v > 0) ? Math.round(v*100)/100 : null;
     r.note = $("note").value.trim() || null;
     return r;
   }
@@ -799,7 +772,7 @@ body{
   function saveCurrent(){
     clearTimeout(saveTimer);
     var r = currentFields();
-    var next = (r.attended || r.otOn || r.otHours || r.note) ? r : null;
+    var next = (r.attended || r.otHours || r.note) ? r : null;
     var current = data[editingDate] || null;
     if(JSON.stringify(current) === JSON.stringify(next)){
       return;
@@ -1235,7 +1208,7 @@ body{
     if(r.attended){
       if(confirm("取消 " + displayDate(editingDate) + " 的打卡吗？")){
         r.attended = false;
-        if(!r.otOn && !r.otHours && !r.note){
+        if(!r.otHours && !r.note){
           delete data[editingDate];
         }else{
           data[editingDate] = r;
@@ -1251,10 +1224,6 @@ body{
     persist();
     renderAll();
     toast(displayDate(editingDate) + " 已打卡");
-  });
-  $("otSwitch").addEventListener("change", function(){
-    $("otFields").style.display = this.checked ? "block" : "none";
-    saveCurrent();
   });
   $("otHours").addEventListener("input", function(){
     updateOtSum();

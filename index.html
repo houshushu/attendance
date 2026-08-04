@@ -2,13 +2,15 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>考勤记录</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>
 :root{
   --bg:#f6f5f2;
@@ -74,6 +76,7 @@ body{
   color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
   padding-bottom:78px;
+  touch-action:manipulation;
 }
 #app{max-width:560px;margin:0 auto;padding:14px 16px 10px}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 14px}
@@ -199,6 +202,7 @@ body{
 .empty{text-align:center;color:var(--muted);padding:34px 0 24px;font-size:13px}
 .tab{display:none}
 .tab.active{display:block}
+.ver{text-align:center;color:var(--muted);font-size:11px;padding:14px 0 4px}
 .bottom-nav{
   position:fixed;left:0;right:0;bottom:0;background:var(--card);
   border-top:1px solid var(--nav-border);z-index:10;
@@ -230,7 +234,7 @@ input[type="file"]{display:none}
 
   <!-- 打卡页 -->
   <section id="tab-clock" class="tab active">
-    <div class="card">
+    <div class="card hero">
       <div class="date-line">
         <div>
           <span id="editDate" class="date-big"></span>
@@ -347,6 +351,8 @@ input[type="file"]{display:none}
     <div id="history"></div>
   </section>
 </div>
+
+<div class="ver">版本 2026-08-05</div>
 
 <nav class="bottom-nav">
   <div class="nav-inner">
@@ -1144,6 +1150,17 @@ input[type="file"]{display:none}
 
   renderProject();
   renderAll();
+  (function remindBackup(){
+    var key = "attendance_last_remind";
+    try{
+      var last = localStorage.getItem(key) || "";
+      var ym = todayKey().slice(0,7);
+      if(last !== ym){
+        localStorage.setItem(key, ym);
+        setTimeout(function(){ toast("记得在“记录”页定期点“备份数据”"); }, 800);
+      }
+    }catch(e){}
+  })();
 })();
 </script>
 </body>

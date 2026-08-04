@@ -536,7 +536,7 @@ input[type="file"]{display:none}
   }
 
   function renderHistory(){
-    var keys = sortedKeys().filter(function(k){ return k.slice(0,7) === filterYm; });
+    var keys = sortedKeys().filter(function(k){ return k.slice(0,7) === filterYm; }).reverse();
     var box = $("history");
     if(!keys.length){
       box.innerHTML = '<div class="card"><div class="empty">这个月还没有记录<br>去“打卡”页点一下打卡吧</div></div>';

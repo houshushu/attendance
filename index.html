@@ -265,7 +265,6 @@ body{
   transition:transform .25s ease;max-width:86%;text-align:center;
 }
 #toast.show{transform:translate(-50%,0)}
-input[type="file"]{display:none}
 </style>
 </head>
 <body>
@@ -399,14 +398,8 @@ input[type="file"]{display:none}
         <button class="btn btn-ghost" id="btnExportAll">导出全部</button>
       </div>
       <div class="exp-row">
-        <button class="btn btn-ghost" id="btnBackup">备份数据</button>
         <button class="btn btn-ghost" id="btnCopyBackup">复制备份</button>
-      </div>
-      <div class="exp-row">
-        <button class="btn btn-ghost" id="btnImport">覆盖导入</button>
-        <button class="btn btn-ghost" id="btnImportMerge">合并导入</button>
         <button class="btn btn-ghost" id="btnPasteImport">粘贴导入</button>
-        <input type="file" id="fileImport" accept=".json,application/json">
       </div>
     </div>
   </section>
@@ -466,7 +459,6 @@ input[type="file"]{display:none}
   var fromHistory = false;
   var saveTimer = null;
   var saveHintTimer = null;
-  var importMode = "overwrite";
   var viewMode = "calendar";
 
   // ---------- 基础工具 ----------
@@ -1088,10 +1080,6 @@ input[type="file"]{display:none}
     download(bytes, isMonth ? "考勤记录_" + filterYm + ".xlsx" : "考勤记录_" + todayKey() + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     toast((isMonth ? "已导出当月 " : "已导出全部 ") + recordCount + " 条记录");
   }
-  function backupJson(){
-    download(JSON.stringify({ name: name, project: projectName, records: data }, null, 2), "考勤备份_" + todayKey() + ".json", "application/json");
-    toast("备份已下载，请妥善保存");
-  }
   function copyBackup(){
     var text = JSON.stringify({ name: name, project: projectName, records: data }, null, 2);
     function done(){ toast("备份已复制，可粘贴到微信等保存"); }
@@ -1103,7 +1091,7 @@ input[type="file"]{display:none}
       document.body.appendChild(ta);
       ta.select();
       try{ document.execCommand("copy"); done(); }
-      catch(e){ toast("复制失败，请用“备份数据”下载"); }
+      catch(e){ toast("复制失败，请手动保存备份内容"); }
       document.body.removeChild(ta);
     }
     if(navigator.clipboard && navigator.clipboard.writeText){
@@ -1248,10 +1236,7 @@ input[type="file"]{display:none}
   });
   $("btnExportMonth").addEventListener("click", function(){ exportExcel("month"); });
   $("btnExportAll").addEventListener("click", function(){ exportExcel("all"); });
-  $("btnBackup").addEventListener("click", backupJson);
   $("btnCopyBackup").addEventListener("click", copyBackup);
-  $("btnImport").addEventListener("click", function(){ importMode = "overwrite"; $("fileImport").click(); });
-  $("btnImportMerge").addEventListener("click", function(){ importMode = "merge"; $("fileImport").click(); });
   function applyImport(recs, projectVal, nameVal, mode){
     if(!recs || typeof recs !== "object" || Array.isArray(recs)) throw new Error("bad");
     recs = migrate(recs);
@@ -1280,24 +1265,6 @@ input[type="file"]{display:none}
       toast("导入成功");
     }
   }
-  $("fileImport").addEventListener("change", function(){
-    var f = this.files && this.files[0];
-    this.value = "";
-    if(!f) return;
-    var reader = new FileReader();
-    reader.onload = function(){
-      try{
-        var obj = JSON.parse(reader.result);
-        if(!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("bad");
-        var newFormat = obj.records !== undefined;
-        applyImport(newFormat ? obj.records : obj, newFormat ? String(obj.project || "") : null, newFormat ? String(obj.name || "") : null, importMode);
-      }catch(e){
-        lastSnapshot = null;
-        toast("导入失败：文件格式不正确");
-      }
-    };
-    reader.readAsText(f, "utf-8");
-  });
   $("btnPasteImport").addEventListener("click", function(){
     $("pasteArea").value = "";
     $("pasteModal").style.display = "flex";
@@ -1338,7 +1305,7 @@ input[type="file"]{display:none}
       var ym = todayKey().slice(0,7);
       if(last !== ym){
         localStorage.setItem(key, ym);
-        setTimeout(function(){ toast("记得在“记录”页定期点“备份数据”"); }, 800);
+        setTimeout(function(){ toast("记得在“记录”页定期点“复制备份”保存数据"); }, 800);
       }
     }catch(e){}
   })();

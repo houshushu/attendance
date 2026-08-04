@@ -259,7 +259,7 @@ body{
   padding:24px;overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .login-card{
-  width:100%;max-width:360px;margin:auto;background:var(--card);border:1px solid var(--card-border);
+  width:100%;max-width:360px;margin:0 auto;background:var(--card);border:1px solid var(--card-border);
   border-radius:20px;padding:24px 24px 14px;box-shadow:0 8px 28px rgba(20,22,26,.08);
 }
 .login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:20px;letter-spacing:1px}
@@ -351,10 +351,10 @@ body{
         <input type="text" id="authCode" placeholder="输入邀请码" autocomplete="off" maxlength="20">
       </div>
       <button class="btn btn-primary" id="btnAuthMain">登录</button>
+      <div class="login-foot">
+        <button class="text-btn" id="btnAuthSwitch">立即注册</button>
+      </div>
       <div class="sync-status" id="authStatus"></div>
-  <div class="login-foot">
-    <button class="text-btn" id="btnAuthSwitch">立即注册</button>
-  </div>
     </div>
   </div>
 
@@ -1291,7 +1291,12 @@ body{
   function clearAuth(){
     try{ localStorage.removeItem(AUTH_STORE_KEY); }catch(e){}
   }
-  function setAuthStatus(msg){ $("authStatus").textContent = msg; }
+  function setAuthStatus(msg){
+    $("authStatus").textContent = msg;
+    if(msg && $("authStatus").scrollIntoView){
+      try{ $("authStatus").scrollIntoView({ block: "nearest" }); }catch(e){}
+    }
+  }
   function dismissKeyboard(){
     if(document.activeElement && document.activeElement.blur){
       try{ document.activeElement.blur(); }catch(e){}

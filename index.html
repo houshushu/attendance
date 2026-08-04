@@ -129,6 +129,7 @@ body{
   outline:none;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
 }
 .field input:focus{border-color:var(--accent);background:var(--card);box-shadow:0 0 0 3px rgba(14,159,110,.12)}
+#ghToken{font-family:Menlo,Consolas,monospace;font-size:13px}
 .dropdown{position:relative}
 .dropdown-btn{
   width:100%;height:46px;border:1px solid var(--soft-border);border-radius:13px;
@@ -414,7 +415,7 @@ body{
       </div>
       <div class="field">
         <label>GitHub 令牌（仅存本机，用于同步数据）</label>
-        <input type="password" id="ghToken" placeholder="粘贴 GitHub 令牌" autocomplete="off" maxlength="120">
+        <input type="text" id="ghToken" placeholder="粘贴 GitHub 令牌（github_pat_ 开头）" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="200">
       </div>
       <div class="exp-row">
         <button class="btn btn-ghost" id="btnGhUpload">上传到 GitHub</button>

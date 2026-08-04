@@ -351,6 +351,10 @@ body{
           <label>密码（至少 6 位）</label>
           <input type="password" id="authPassword" placeholder="输入密码" autocomplete="off" maxlength="50">
         </div>
+        <div class="field">
+          <label>邀请码（注册时需要）</label>
+          <input type="text" id="authCode" placeholder="输入邀请码" autocomplete="off" maxlength="20">
+        </div>
         <div class="exp-row">
           <button class="btn btn-ghost" id="btnLogin">登录</button>
           <button class="btn btn-primary" id="btnSignup">注册</button>
@@ -1185,6 +1189,7 @@ body{
   var SUPABASE_URL = "https://banqumejhqrxhbftthqd.supabase.co";
   var SUPABASE_KEY = "sb_publishable_xua-V0A3BU7KXkuw3ZTqvw_UDb_rw7i";
   var AUTH_STORE_KEY = "attendance_auth";
+  var INVITE_CODE = "5839";
   var auth = loadAuth();
 
   function loadAuth(){
@@ -1217,8 +1222,10 @@ body{
   function signUp(){
     var nm = $("authName").value.trim();
     var pw = $("authPassword").value;
+    var code = $("authCode").value.trim();
     if(!nm){ setAuthStatus("请填写姓名"); return; }
     if(pw.length < 6){ setAuthStatus("密码至少 6 位"); return; }
+    if(code !== INVITE_CODE){ setAuthStatus("邀请码不正确"); return; }
     setAuthStatus("正在注册…");
     fetch(SUPABASE_URL + "/rest/v1/accounts?name=eq." + encodeURIComponent(nm) + "&select=name", {
       headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }

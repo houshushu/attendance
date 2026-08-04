@@ -198,7 +198,7 @@ body{
 .cal-cell:active{background:var(--soft-2)}
 .cal-cell.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .cal-cell.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
-.cal-ot{font-size:10px;color:var(--red);font-weight:600;margin-top:2px;line-height:1}
+.cal-ot{font-size:10px;color:var(--red);font-weight:600;margin-top:5px;line-height:1}
 .cal-legend{display:flex;justify-content:center;gap:16px;margin-top:12px;color:var(--muted);font-size:11px}
 .cal-legend .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px;vertical-align:middle}
 .text-btn{background:none;border:none;color:var(--accent);font-size:13px;padding:8px 4px;cursor:pointer}
@@ -207,6 +207,23 @@ body{
 .undo-row{text-align:center;margin-top:6px}
 .save-hint{text-align:center;color:var(--green);font-size:12px;height:16px;opacity:0;transition:opacity .3s;margin-top:4px}
 .save-hint.show{opacity:1}
+.modal-mask{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:90;
+  background:rgba(20,22,26,.45);display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.modal{
+  width:100%;max-width:420px;background:var(--card);border:1px solid var(--card-border);
+  border-radius:18px;padding:18px;box-shadow:0 12px 32px rgba(20,22,26,.18);
+}
+.modal h3{margin:0 0 12px;font-size:16px;font-weight:700}
+.modal textarea{
+  width:100%;height:170px;border:1px solid var(--soft-border);border-radius:12px;
+  padding:10px 12px;font-size:12px;font-family:Menlo,Consolas,monospace;
+  background:var(--soft-bg);color:var(--text);outline:none;resize:vertical;box-sizing:border-box;
+}
+.modal textarea:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:10px;margin-top:14px}
+.modal-actions .btn{flex:1;font-size:14px;padding:12px 0}
 .rec{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--divider);padding:12px 4px;cursor:pointer}
 .rec:last-child{border-bottom:none}
 .rec:active{background:var(--soft-bg)}
@@ -363,6 +380,19 @@ input[type="file"]{display:none}
           <div class="label">日均加班（小时）</div>
         </div>
       </div>
+    </div>
+
+    <div class="card view-card">
+      <div class="view-toggle">
+        <button id="btnViewList" class="active">列表</button>
+        <button id="btnViewCalendar">日历</button>
+      </div>
+    </div>
+
+    <div id="history"></div>
+
+    <div class="card">
+      <h2>数据导出与备份</h2>
       <div class="exp-row">
         <button class="btn btn-primary" id="btnExportMonth">导出当月</button>
         <button class="btn btn-ghost" id="btnExportAll">导出全部</button>
@@ -374,19 +404,23 @@ input[type="file"]{display:none}
       <div class="exp-row">
         <button class="btn btn-ghost" id="btnImport">覆盖导入</button>
         <button class="btn btn-ghost" id="btnImportMerge">合并导入</button>
+        <button class="btn btn-ghost" id="btnPasteImport">粘贴导入</button>
         <input type="file" id="fileImport" accept=".json,application/json">
       </div>
     </div>
-
-    <div class="card view-card">
-      <div class="view-toggle">
-        <button id="btnViewList" class="active">列表</button>
-        <button id="btnViewCalendar">日历</button>
-      </div>
-    </div>
-
-    <div id="history"></div>
   </section>
+</div>
+
+<div class="modal-mask" id="pasteModal" style="display:none">
+  <div class="modal">
+    <h3>粘贴导入</h3>
+    <textarea id="pasteArea" placeholder="把复制好的备份内容粘贴到这里"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnPasteCancel">取消</button>
+      <button class="btn btn-ghost" id="btnPasteMerge">合并导入</button>
+      <button class="btn btn-primary" id="btnPasteOverwrite">覆盖导入</button>
+    </div>
+  </div>
 </div>
 
 <div class="ver">版本 2026-08-05</div>
@@ -1210,6 +1244,34 @@ input[type="file"]{display:none}
   $("btnCopyBackup").addEventListener("click", copyBackup);
   $("btnImport").addEventListener("click", function(){ importMode = "overwrite"; $("fileImport").click(); });
   $("btnImportMerge").addEventListener("click", function(){ importMode = "merge"; $("fileImport").click(); });
+  function applyImport(recs, projectVal, nameVal, mode){
+    if(!recs || typeof recs !== "object" || Array.isArray(recs)) throw new Error("bad");
+    recs = migrate(recs);
+    snapshot();
+    if(mode === "merge"){
+      var added = 0;
+      Object.keys(recs).forEach(function(k){
+        if(!(k in data)){ data[k] = recs[k]; added++; }
+      });
+      if(!projectName && projectVal) projectName = projectVal;
+      if(!name && nameVal) name = nameVal;
+      saveProject();
+      saveName();
+      persist();
+      renderAll();
+      toast("合并导入完成，新增 " + added + " 天");
+    }else{
+      if(!confirm("导入将覆盖当前全部数据，确定继续吗？")){ lastSnapshot = null; return; }
+      data = recs;
+      if(projectVal !== null) projectName = projectVal;
+      if(nameVal !== null) name = nameVal;
+      saveProject();
+      saveName();
+      persist();
+      renderAll();
+      toast("导入成功");
+    }
+  }
   $("fileImport").addEventListener("change", function(){
     var f = this.files && this.files[0];
     this.value = "";
@@ -1219,33 +1281,8 @@ input[type="file"]{display:none}
       try{
         var obj = JSON.parse(reader.result);
         if(!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("bad");
-        var recs = (obj.records !== undefined) ? obj.records : obj;
-        if(!recs || typeof recs !== "object" || Array.isArray(recs)) throw new Error("bad");
-        recs = migrate(recs);
-        snapshot();
-        if(importMode === "merge"){
-          var added = 0;
-          Object.keys(recs).forEach(function(k){
-            if(!(k in data)){ data[k] = recs[k]; added++; }
-          });
-          if(!projectName && obj.records !== undefined && obj.project) projectName = String(obj.project || "");
-          if(!name && obj.records !== undefined && obj.name) name = String(obj.name || "");
-          saveProject();
-          saveName();
-          persist();
-          renderAll();
-          toast("合并导入完成，新增 " + added + " 天");
-        }else{
-          if(!confirm("导入将覆盖当前全部数据，确定继续吗？")){ lastSnapshot = null; return; }
-          data = recs;
-          if(obj.records !== undefined) projectName = String(obj.project || "");
-          if(obj.records !== undefined) name = String(obj.name || "");
-          saveProject();
-          saveName();
-          persist();
-          renderAll();
-          toast("导入成功");
-        }
+        var newFormat = obj.records !== undefined;
+        applyImport(newFormat ? obj.records : obj, newFormat ? String(obj.project || "") : null, newFormat ? String(obj.name || "") : null, importMode);
       }catch(e){
         lastSnapshot = null;
         toast("导入失败：文件格式不正确");
@@ -1253,6 +1290,25 @@ input[type="file"]{display:none}
     };
     reader.readAsText(f, "utf-8");
   });
+  $("btnPasteImport").addEventListener("click", function(){
+    $("pasteArea").value = "";
+    $("pasteModal").style.display = "flex";
+    setTimeout(function(){ $("pasteArea").focus(); }, 50);
+  });
+  $("btnPasteCancel").addEventListener("click", function(){ $("pasteModal").style.display = "none"; });
+  function pasteImport(mode){
+    try{
+      var obj = JSON.parse($("pasteArea").value);
+      if(!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("bad");
+      var newFormat = obj.records !== undefined;
+      applyImport(newFormat ? obj.records : obj, newFormat ? String(obj.project || "") : null, newFormat ? String(obj.name || "") : null, mode);
+      $("pasteModal").style.display = "none";
+    }catch(e){
+      toast("导入失败：粘贴内容格式不正确");
+    }
+  }
+  $("btnPasteMerge").addEventListener("click", function(){ pasteImport("merge"); });
+  $("btnPasteOverwrite").addEventListener("click", function(){ pasteImport("overwrite"); });
 
   document.querySelectorAll(".nav-item").forEach(function(btn){
     btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });

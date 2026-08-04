@@ -1374,7 +1374,7 @@ body{
       .catch(function(){ setAuthStatus("网络错误，请重试"); });
   }
   function applyAuthName(){
-    if(auth && auth.name){
+    if(!name && auth && auth.name){
       name = auth.name;
       saveName();
       renderName();

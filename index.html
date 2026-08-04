@@ -117,6 +117,7 @@ body{
 }
 .btn-round.marked{background:var(--accent-soft);color:var(--accent);box-shadow:0 0 0 10px rgba(14,159,110,.08)}
 .btn-round:active{opacity:.85}
+.clock-time{text-align:center;color:var(--muted);font-size:12px;margin:-18px auto 22px}
 .btn-primary{background:var(--accent)}
 .btn-primary:active{background:var(--accent-dark)}
 .btn-ghost{background:var(--ghost-bg);color:var(--text)}
@@ -197,6 +198,16 @@ body{
 .trend-legend{display:flex;justify-content:center;gap:16px;margin-top:12px;color:var(--muted);font-size:11px}
 .trend-legend .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px;vertical-align:middle}
 .trend-legend .dot.ot{background:var(--red)}
+.recent{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.recent-cell{
+  border:1px solid var(--divider-2);background:var(--soft-bg);border-radius:10px;
+  padding:8px 0 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:14px;color:var(--text);transition:background .15s ease,color .15s ease;
+}
+.recent-cell .rw{font-size:10px;color:var(--muted)}
+.recent-cell.on{background:var(--accent-soft);border-color:var(--chip-done);color:var(--accent);font-weight:700}
+.recent-cell.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.recent-cell:active{opacity:.75}
 .exp-row{display:flex;gap:10px;margin-top:14px}
 .exp-row .btn{flex:1;min-width:0;font-size:14px;padding:11px 0}
 .exp-row + .exp-row{margin-top:10px}
@@ -360,6 +371,7 @@ body{
       </div>
 
       <button id="btnClock" class="btn btn-round">打卡</button>
+      <div class="clock-time" id="clockTime" style="display:none"></div>
 
       <div class="field">
         <input type="number" id="otHours" min="0" step="0.5" placeholder="加班时长（小时）">
@@ -389,6 +401,29 @@ body{
       </div>
       <div class="save-hint" id="saveHint">已自动保存</div>
 
+    </div>
+
+    <div class="card">
+      <h2>本月概览</h2>
+      <div class="stats">
+        <div class="item">
+          <div class="num" id="ovDays">0</div>
+          <div class="label">出勤天数</div>
+        </div>
+        <div class="item">
+          <div class="num" id="ovOt">0</div>
+          <div class="label">加班（小时）</div>
+        </div>
+        <div class="item">
+          <div class="num" id="ovStreak">0</div>
+          <div class="label">连续打卡（天）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>最近7天</h2>
+      <div class="recent" id="recentBox"></div>
     </div>
 
   </section>
@@ -533,6 +568,10 @@ body{
 
   // ---------- 基础工具 ----------
   function pad2(n){ return n < 10 ? "0" + n : "" + n; }
+  function nowHM(){
+    var d = new Date();
+    return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
   function dateKey(y,m,d){ return y + "-" + pad2(m) + "-" + pad2(d); }
   function todayKey(){
     var d = new Date();
@@ -607,6 +646,12 @@ body{
     $("recDate").value = editingDate;
 
     var attended = !!r.attended;
+    if(attended && r.clockedAt){
+      $("clockTime").style.display = "block";
+      $("clockTime").textContent = "打卡时间 " + r.clockedAt;
+    }else{
+      $("clockTime").style.display = "none";
+    }
     var clockBtn = $("btnClock");
     clockBtn.textContent = attended ? "已打卡" : "打卡";
     clockBtn.className = attended ? "btn btn-round marked" : "btn btn-round";
@@ -775,6 +820,34 @@ body{
     $("trendBox").innerHTML = html;
   }
 
+  function renderOverview(){
+    var ym = todayKey().slice(0, 7);
+    var days = 0, ot = 0;
+    Object.keys(data).forEach(function(k){
+      if(k.slice(0,7) !== ym) return;
+      var r = data[k];
+      if(r.attended) days++;
+      if(r.otHours) ot += r.otHours;
+    });
+    $("ovDays").textContent = days;
+    $("ovOt").textContent = Math.round(ot*100)/100;
+    $("ovStreak").textContent = currentStreak();
+  }
+
+  function renderRecent(){
+    var html = "";
+    var d = new Date();
+    var today = todayKey();
+    for(var i = 0; i < 7; i++){
+      var k = dateKey(d.getFullYear(), d.getMonth()+1, d.getDate());
+      var r = data[k];
+      var cls = "recent-cell" + (r && r.attended ? " on" : "") + (k === today ? " today" : "");
+      html += '<button class="' + cls + '" data-key="' + k + '"><span class="rw">' + WEEKS[d.getDay()] + '</span><span>' + d.getDate() + '</span></button>';
+      d.setDate(d.getDate() - 1);
+    }
+    $("recentBox").innerHTML = html;
+  }
+
   function renderProject(){
     $("projectName").value = projectName;
   }
@@ -795,6 +868,8 @@ body{
     renderStats();
     renderHistory();
     renderTrend();
+    renderOverview();
+    renderRecent();
     renderAccount();
     renderViewToggle();
     renderMonthSelect();
@@ -820,7 +895,7 @@ body{
 
   function currentFields(){
     var existing = data[editingDate] || {};
-    var r = { attended: !!existing.attended };
+    var r = { attended: !!existing.attended, clockedAt: existing.clockedAt || null };
     var v = parseFloat($("otHours").value);
     r.otHours = (!isNaN(v) && v > 0) ? Math.round(v*100)/100 : null;
     r.note = $("note").value.trim() || null;
@@ -842,10 +917,7 @@ body{
         delete data[editingDate];
       }
       persist();
-      if(auth){
-        clearTimeout(cloudTimer);
-        cloudTimer = setTimeout(function(){ cloudPush(true); }, 2500);
-      }
+      scheduleCloudPush();
       renderAll();
       showSaved();
     }
@@ -1340,6 +1412,12 @@ body{
   function setSyncDot(ok){
     $("syncDot").classList.toggle("ok", !!ok);
   }
+  function scheduleCloudPush(){
+    if(auth){
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(function(){ cloudPush(); }, 2500);
+    }
+  }
   function cloudPush(retried){
     clearTimeout(cloudTimer);
     if(!auth) return;
@@ -1507,20 +1585,24 @@ body{
     if(r.attended){
       if(confirm("取消 " + displayDate(editingDate) + " 的打卡吗？")){
         r.attended = false;
+        r.clockedAt = null;
         if(!r.otHours && !r.note){
           delete data[editingDate];
         }else{
           data[editingDate] = r;
         }
         persist();
+        scheduleCloudPush();
         renderAll();
         toast("已取消打卡");
       }
       return;
     }
     r.attended = true;
+    r.clockedAt = r.clockedAt || nowHM();
     data[editingDate] = r;
     persist();
+    scheduleCloudPush();
     renderAll();
     toast(displayDate(editingDate) + " 已打卡");
   });
@@ -1535,6 +1617,21 @@ body{
     $("otHours").value = b.getAttribute("data-ot");
     saveCurrent();
   });
+  $("recentBox").addEventListener("click", function(e){
+    var b = e.target.closest(".recent-cell");
+    if(!b) return;
+    var k = b.getAttribute("data-key");
+    var r = data[k] || {};
+    if(r.attended){ toast(displayDate(k) + " 已打卡"); return; }
+    snapshot();
+    r.attended = true;
+    r.clockedAt = nowHM();
+    data[k] = r;
+    persist();
+    scheduleCloudPush();
+    renderAll();
+    toast("已补打卡 " + displayDate(k));
+  });
   $("note").addEventListener("input", debounceSave);
   $("note").addEventListener("change", saveCurrent);
   window.addEventListener("pagehide", saveCurrent);
@@ -1546,6 +1643,7 @@ body{
     data = migrate(JSON.parse(JSON.stringify(lastSnapshot)));
     lastSnapshot = null;
     persist();
+    scheduleCloudPush();
     renderAll();
     toast("已撤销上一步");
   });
@@ -1554,6 +1652,7 @@ body{
     snapshot();
     delete data[editingDate];
     persist();
+    scheduleCloudPush();
     editingDate = todayKey();
     fromHistory = false;
     renderAll();
@@ -1618,6 +1717,7 @@ body{
   $("btnConfirmDelete").addEventListener("click", function(){
     data = {};
     persist();
+    scheduleCloudPush();
     renderAll();
     $("confirmModal").style.display = "none";
     toast("已删除全部记录（可点“撤销上一步”找回）");

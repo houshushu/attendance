@@ -198,12 +198,9 @@ body{
 .cal-cell:active{background:var(--soft-2)}
 .cal-cell.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .cal-cell.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
-.cal-dots{display:flex;gap:3px;margin-top:3px;height:5px}
-.cal-dots .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
-.cal-dots .dot.ot{background:var(--red)}
+.cal-ot{font-size:10px;color:var(--red);font-weight:600;margin-top:2px;line-height:1}
 .cal-legend{display:flex;justify-content:center;gap:16px;margin-top:12px;color:var(--muted);font-size:11px}
 .cal-legend .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:4px;vertical-align:middle}
-.cal-legend .dot.ot{background:var(--red)}
 .text-btn{background:none;border:none;color:var(--accent);font-size:13px;padding:8px 4px;cursor:pointer}
 .text-btn.danger{color:var(--red)}
 .del-row{display:flex;justify-content:center;margin-top:10px}
@@ -435,7 +432,7 @@ input[type="file"]{display:none}
   var saveTimer = null;
   var saveHintTimer = null;
   var importMode = "overwrite";
-  var viewMode = "list";
+  var viewMode = "calendar";
 
   // ---------- 基础工具 ----------
   function pad2(n){ return n < 10 ? "0" + n : "" + n; }
@@ -618,13 +615,11 @@ input[type="file"]{display:none}
       var cls = "cal-cell";
       if(k === today) cls += " today";
       if(r && r.attended) cls += " on";
-      var dots = "";
-      if(r && r.attended) dots += '<span class="dot"></span>';
-      if(r && r.otHours) dots += '<span class="dot ot"></span>';
-      html += '<button class="' + cls + '" data-key="' + k + '">' + d + (dots ? '<span class="cal-dots">' + dots + '</span>' : "") + '</button>';
+      var otTxt = (r && r.otHours) ? '<span class="cal-ot">' + r.otHours + '</span>' : "";
+      html += '<button class="' + cls + '" data-key="' + k + '">' + d + otTxt + '</button>';
     }
     html += '</div>';
-    html += '<div class="cal-legend"><span><i class="dot"></i>出勤</span><span><i class="dot ot"></i>加班</span></div>';
+    html += '<div class="cal-legend"><span><i class="dot"></i>出勤</span><span>数字 = 加班小时</span></div>';
     $("history").innerHTML = '<div class="card">' + html + '</div>';
   }
 

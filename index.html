@@ -430,32 +430,12 @@ body{
         <button class="btn btn-primary" id="btnExportMonth">导出当月</button>
         <button class="btn btn-ghost" id="btnExportAll">导出全部</button>
       </div>
-      <div class="exp-row">
-        <button class="btn btn-ghost" id="btnCopyBackup">复制备份</button>
-        <button class="btn btn-ghost" id="btnPasteImport">粘贴导入</button>
-      </div>
-      <div class="exp-row">
-        <button class="btn btn-ghost" id="btnCloudPush">立即同步到云端</button>
-        <button class="btn btn-ghost" id="btnCloudPull">从云端恢复</button>
-      </div>
       <div class="sync-status" id="cloudStatus"></div>
       <div class="exp-row">
         <button class="btn btn-danger" id="btnClearAll">删除所有记录</button>
       </div>
     </div>
   </section>
-</div>
-
-<div class="modal-mask" id="pasteModal" style="display:none">
-  <div class="modal">
-    <h3>粘贴导入</h3>
-    <textarea id="pasteArea" placeholder="把复制好的备份内容粘贴到这里"></textarea>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="btnPasteCancel">取消</button>
-      <button class="btn btn-ghost" id="btnPasteMerge">合并导入</button>
-      <button class="btn btn-primary" id="btnPasteOverwrite">覆盖导入</button>
-    </div>
-  </div>
 </div>
 
 <div class="modal-mask" id="confirmModal" style="display:none">
@@ -465,6 +445,19 @@ body{
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnConfirmCancel">取消</button>
       <button class="btn btn-danger" id="btnConfirmDelete">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="syncModal" style="display:none">
+  <div class="modal">
+    <h3>数据不一致</h3>
+    <p class="modal-text">本机数据和云端数据不一样，请选择如何处理：</p>
+    <div class="modal-actions" style="flex-direction:column;gap:10px">
+      <button class="btn btn-primary" id="btnSyncMerge">合并（两边都保留）</button>
+      <button class="btn btn-ghost" id="btnSyncCloud">用云端覆盖本机</button>
+      <button class="btn btn-ghost" id="btnSyncLocal">用本机覆盖云端</button>
+      <button class="btn btn-ghost" id="btnSyncLater">暂不处理</button>
     </div>
   </div>
 </div>
@@ -1168,27 +1161,6 @@ body{
     download(bytes, isMonth ? "考勤记录_" + filterYm + ".xlsx" : "考勤记录_" + todayKey() + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     toast((isMonth ? "已导出当月 " : "已导出全部 ") + recordCount + " 条记录");
   }
-  function copyBackup(){
-    var text = JSON.stringify({ name: name, project: projectName, records: data }, null, 2);
-    function done(){ toast("备份已复制，可粘贴到微信等保存"); }
-    function fallback(){
-      var ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      try{ document.execCommand("copy"); done(); }
-      catch(e){ toast("复制失败，请手动保存备份内容"); }
-      document.body.removeChild(ta);
-    }
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(done, fallback);
-    }else{
-      fallback();
-    }
-  }
-
   // ---------- Supabase 云端同步 ----------
   var SUPABASE_URL = "https://banqumejhqrxhbftthqd.supabase.co";
   var SUPABASE_KEY = "sb_publishable_xua-V0A3BU7KXkuw3ZTqvw_UDb_rw7i";
@@ -1256,7 +1228,7 @@ body{
             applyAuthName();
             setAuthStatus("注册成功，已自动登录");
             renderAccount();
-            cloudPull();
+            cloudSync();
             return true;
           });
         });
@@ -1285,7 +1257,7 @@ body{
           applyAuthName();
           setAuthStatus("登录成功");
           renderAccount();
-          cloudPull();
+          cloudSync();
         });
       })
       .catch(function(){ setAuthStatus("网络错误，请重试"); });
@@ -1367,9 +1339,10 @@ body{
         if(!quiet) setCloudStatus("同步失败：" + ((e && e.message) || "网络异常"));
       });
   }
-  function cloudPull(){
+  var pendingCloud = null;
+  function cloudSync(){
     if(!auth){ setCloudStatus("请先登录账号再同步"); return; }
-    setCloudStatus("正在从云端读取…");
+    setCloudStatus("正在与云端同步…");
     fetch(SUPABASE_URL + "/rest/v1/attendance_data?id=eq." + auth.id + "&select=payload", {
       headers: cloudAuthHeaders()
     })
@@ -1379,24 +1352,58 @@ body{
         return res.json();
       })
       .then(function(rows){
-        if(rows && rows.length && rows[0].payload){
-          var p = rows[0].payload;
-          data = migrate(p.records || {});
-          if(p.name !== undefined) name = String(p.name || "");
-          if(p.project !== undefined) projectName = String(p.project || "");
+        if(!rows || !rows.length){
+          setCloudStatus("云端暂无数据，自动上传本机…");
+          cloudPush(true);
+          return;
+        }
+        var cp = rows[0].payload;
+        var local = { name: name, project: projectName, records: data };
+        if(JSON.stringify(cp) === JSON.stringify(local)){
+          setCloudStatus("已同步");
+          return;
+        }
+        if(Object.keys(data).length === 0){
+          data = migrate(cp.records || {});
+          if(cp.name !== undefined) name = String(cp.name || "");
+          if(cp.project !== undefined) projectName = String(cp.project || "");
           persist();
           saveName();
           saveProject();
           renderAll();
           setCloudStatus("已从云端恢复数据");
-        }else{
-          setCloudStatus("云端暂无数据，自动上传本地…");
-          cloudPush(true);
+          return;
         }
+        pendingCloud = cp;
+        $("syncModal").style.display = "flex";
+        setCloudStatus("本机与云端数据不一致，请选择处理方式");
       })
       .catch(function(e){
         setCloudStatus("云端读取失败：" + ((e && e.message) || "网络异常") + "，当前使用本地数据");
       });
+  }
+  function applySyncChoice(mode){
+    if(!pendingCloud) return;
+    var cp = pendingCloud;
+    if(mode === "merge"){
+      applyImport(cp.records || {}, cp.project !== undefined ? String(cp.project || "") : null, cp.name !== undefined ? String(cp.name || "") : null, "merge");
+      cloudPush(true);
+      setCloudStatus("已合并并同步");
+    }else if(mode === "cloud"){
+      data = migrate(cp.records || {});
+      if(cp.name !== undefined) name = String(cp.name || "");
+      if(cp.project !== undefined) projectName = String(cp.project || "");
+      persist();
+      saveName();
+      saveProject();
+      renderAll();
+      setCloudStatus("已用云端数据覆盖本机");
+    }else if(mode === "local"){
+      cloudPush(true);
+      setCloudStatus("已用本机数据覆盖云端");
+    }
+    pendingCloud = null;
+    $("syncModal").style.display = "none";
   }
   // ---------- Toast ----------
   var toastTimer = null;
@@ -1529,7 +1536,6 @@ body{
   });
   $("btnExportMonth").addEventListener("click", function(){ exportExcel("month"); });
   $("btnExportAll").addEventListener("click", function(){ exportExcel("all"); });
-  $("btnCopyBackup").addEventListener("click", copyBackup);
   function applyImport(recs, projectVal, nameVal, mode){
     if(!recs || typeof recs !== "object" || Array.isArray(recs)) throw new Error("bad");
     recs = migrate(recs);
@@ -1558,25 +1564,6 @@ body{
       toast("导入成功");
     }
   }
-  $("btnPasteImport").addEventListener("click", function(){
-    $("pasteArea").value = "";
-    $("pasteModal").style.display = "flex";
-    setTimeout(function(){ $("pasteArea").focus(); }, 50);
-  });
-  $("btnPasteCancel").addEventListener("click", function(){ $("pasteModal").style.display = "none"; });
-  function pasteImport(mode){
-    try{
-      var obj = JSON.parse($("pasteArea").value);
-      if(!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("bad");
-      var newFormat = obj.records !== undefined;
-      applyImport(newFormat ? obj.records : obj, newFormat ? String(obj.project || "") : null, newFormat ? String(obj.name || "") : null, mode);
-      $("pasteModal").style.display = "none";
-    }catch(e){
-      toast("导入失败：粘贴内容格式不正确");
-    }
-  }
-  $("btnPasteMerge").addEventListener("click", function(){ pasteImport("merge"); });
-  $("btnPasteOverwrite").addEventListener("click", function(){ pasteImport("overwrite"); });
   $("btnClearAll").addEventListener("click", function(){
     snapshot();
     $("confirmModal").style.display = "flex";
@@ -1591,8 +1578,14 @@ body{
     $("confirmModal").style.display = "none";
     toast("已删除全部记录（可点“撤销上一步”找回）");
   });
-  $("btnCloudPush").addEventListener("click", function(){ cloudPush(false); });
-  $("btnCloudPull").addEventListener("click", cloudPull);
+  $("btnSyncMerge").addEventListener("click", function(){ applySyncChoice("merge"); });
+  $("btnSyncCloud").addEventListener("click", function(){ applySyncChoice("cloud"); });
+  $("btnSyncLocal").addEventListener("click", function(){ applySyncChoice("local"); });
+  $("btnSyncLater").addEventListener("click", function(){
+    pendingCloud = null;
+    $("syncModal").style.display = "none";
+    setCloudStatus("已跳过，本机数据暂未与云端同步");
+  });
   $("btnLogin").addEventListener("click", signIn);
   $("btnSignup").addEventListener("click", signUp);
   $("btnLogoutTop").addEventListener("click", signOut);
@@ -1617,12 +1610,12 @@ body{
               auth.email = u.email || auth.email;
               saveAuth(auth);
               renderAccount();
-              cloudPull();
+              cloudSync();
             });
           }
           return refreshSession().then(function(ok){
             renderAccount();
-            if(ok) cloudPull();
+            if(ok) cloudSync();
             else setCloudStatus("登录已过期，请重新登录");
           });
         })

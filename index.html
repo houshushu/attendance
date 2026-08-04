@@ -1340,6 +1340,18 @@ body{
       });
   }
   var pendingCloud = null;
+  function stableStringify(v){
+    if(Array.isArray(v)) return "[" + v.map(stableStringify).join(",") + "]";
+    if(v && typeof v === "object"){
+      var keys = Object.keys(v).sort();
+      var parts = [];
+      for(var i = 0; i < keys.length; i++){
+        parts.push(JSON.stringify(keys[i]) + ":" + stableStringify(v[keys[i]]));
+      }
+      return "{" + parts.join(",") + "}";
+    }
+    return JSON.stringify(v);
+  }
   function cloudSync(){
     if(!auth){ setCloudStatus("请先登录账号再同步"); return; }
     setCloudStatus("正在与云端同步…");
@@ -1359,7 +1371,7 @@ body{
         }
         var cp = rows[0].payload;
         var local = { name: name, project: projectName, records: data };
-        if(JSON.stringify(cp) === JSON.stringify(local)){
+        if(stableStringify(cp) === stableStringify(local)){
           setCloudStatus("已同步");
           return;
         }

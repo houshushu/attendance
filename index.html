@@ -1325,13 +1325,14 @@ body{
   }
 
   function setCloudStatus(msg){ $("cloudStatus").textContent = msg; }
+  function cloudAuthHeaders(){
+    return { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + (auth ? auth.access_token : SUPABASE_KEY) };
+  }
   function cloudHeaders(){
-    return {
-      "apikey": SUPABASE_KEY,
-      "Authorization": "Bearer " + SUPABASE_KEY,
-      "Content-Type": "application/json",
-      "Prefer": "resolution=merge-duplicates"
-    };
+    var h = cloudAuthHeaders();
+    h["Content-Type"] = "application/json";
+    h["Prefer"] = "resolution=merge-duplicates";
+    return h;
   }
   function cloudPayload(){
     if(!auth) return null;
@@ -1342,7 +1343,7 @@ body{
       updated_at: new Date().toISOString()
     };
   }
-  function cloudPush(quiet){
+  function cloudPush(quiet, retried){
     clearTimeout(cloudTimer);
     if(!auth){ if(!quiet) setCloudStatus("请先登录账号再同步"); return; }
     if(!quiet) setCloudStatus("正在同步…");
@@ -1352,6 +1353,13 @@ body{
       body: JSON.stringify(cloudPayload())
     })
       .then(function(res){
+        if(res.status === 401 && !retried){
+          return refreshSession().then(function(ok){
+            if(!ok) throw new Error("登录已过期，请重新登录");
+            cloudPush(quiet, true);
+            return null;
+          });
+        }
         if(!res.ok) throw new Error("同步失败(" + res.status + ")");
         setCloudStatus("已同步到云端");
       })
@@ -1363,9 +1371,10 @@ body{
     if(!auth){ setCloudStatus("请先登录账号再同步"); return; }
     setCloudStatus("正在从云端读取…");
     fetch(SUPABASE_URL + "/rest/v1/attendance_data?id=eq." + auth.id + "&select=payload", {
-      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+      headers: cloudAuthHeaders()
     })
       .then(function(res){
+        if(res.status === 401) throw new Error("登录已过期，请重新登录");
         if(res.status !== 200) throw new Error("读取失败(" + res.status + ")");
         return res.json();
       })
@@ -1389,7 +1398,6 @@ body{
         setCloudStatus("云端读取失败：" + ((e && e.message) || "网络异常") + "，当前使用本地数据");
       });
   }
-
   // ---------- Toast ----------
   var toastTimer = null;
   function toast(msg){

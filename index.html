@@ -1422,6 +1422,8 @@ body{
     var logged = !!auth;
     $("loginGate").style.display = logged ? "none" : "flex";
     $("btnLogout").style.display = logged ? "block" : "none";
+    var nav = document.querySelector(".bottom-nav");
+    if(nav) nav.style.display = logged ? "block" : "none";
   }
   function cloudAuthHeaders(){
     return { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + (auth ? auth.access_token : SUPABASE_KEY) };

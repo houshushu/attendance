@@ -233,10 +233,12 @@ body{
 }
 .login-card{
   width:100%;max-width:360px;background:var(--card);border:1px solid var(--card-border);
-  border-radius:20px;padding:24px;box-shadow:0 8px 28px rgba(20,22,26,.08);
+  border-radius:20px;padding:24px 24px 14px;box-shadow:0 8px 28px rgba(20,22,26,.08);
 }
 .login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:20px;letter-spacing:1px}
-.login-foot{display:flex;justify-content:flex-end;margin-top:6px}
+.login-card #btnAuthMain{margin-top:16px}
+.login-card .sync-status{min-height:14px;margin:10px 0 0}
+.login-foot{display:flex;justify-content:flex-end;margin-top:2px}
 .modal{
   width:100%;max-width:420px;background:var(--card);border:1px solid var(--card-border);
   border-radius:18px;padding:18px;box-shadow:0 12px 32px rgba(20,22,26,.18);
@@ -316,10 +318,10 @@ body{
         <input type="text" id="authCode" placeholder="输入邀请码" autocomplete="off" maxlength="20">
       </div>
       <button class="btn btn-primary" id="btnAuthMain">登录</button>
+      <div class="sync-status" id="authStatus"></div>
       <div class="login-foot">
         <button class="text-btn" id="btnAuthSwitch">注册</button>
       </div>
-      <div class="sync-status" id="authStatus"></div>
     </div>
   </div>
 

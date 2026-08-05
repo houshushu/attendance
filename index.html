@@ -1817,6 +1817,11 @@ body:not(.authed) .bottom-nav{display:none}
       wasOpen = open;
     });
   })();
+  (function blockPullRefresh(){
+    document.addEventListener("touchmove", function(ev){
+      if(!document.body.classList.contains("authed")) ev.preventDefault();
+    }, { passive: false });
+  })();
 
   (function initAuth(){
     if(auth){

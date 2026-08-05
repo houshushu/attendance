@@ -1803,18 +1803,37 @@ body:not(.authed) .bottom-nav{display:none}
   (function keepLoginCentered(){
     var scroller = document.querySelector(".page-scroll");
     if(!scroller) return;
-    if(!document.body.classList.contains("authed")) scroller.scrollTop = 0;
-    if(!window.visualViewport) return;
+    function reset(){
+      if(document.body.classList.contains("authed")) return;
+      if(scroller.scrollTop !== 0) scroller.scrollTop = 0;
+      if(window.scrollY !== 0) window.scrollTo(0, 0);
+    }
+    reset();
+    function keyboardClosed(){
+      return !window.visualViewport || window.visualViewport.height >= window.innerHeight - 60;
+    }
     var wasOpen = false;
-    window.visualViewport.addEventListener("resize", function(){
-      var vh = window.visualViewport.height;
-      var open = vh < window.innerHeight - 60;
-      if(!open && wasOpen && !document.body.classList.contains("authed")){
-        requestAnimationFrame(function(){
-          setTimeout(function(){ scroller.scrollTop = 0; }, 80);
-        });
+    function onVvChange(){
+      var open = !keyboardClosed();
+      if(!open && wasOpen){
+        setTimeout(reset, 60);
+        setTimeout(reset, 250);
+        setTimeout(reset, 600);
       }
       wasOpen = open;
+    }
+    if(window.visualViewport){
+      window.visualViewport.addEventListener("resize", onVvChange);
+      window.visualViewport.addEventListener("scroll", onVvChange);
+    }
+    ["authName", "authPassword", "authCode"].forEach(function(id){
+      var el = $(id);
+      if(!el) return;
+      el.addEventListener("blur", function(){
+        setTimeout(function(){
+          if(keyboardClosed()) reset();
+        }, 200);
+      });
     });
   })();
   (function blockPullRefresh(){

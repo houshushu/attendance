@@ -1576,10 +1576,12 @@ body.auth-cache .login-gate{display:none}
   $("projectName").addEventListener("change", function(){
     projectName = this.value.trim();
     saveProject();
+    scheduleCloudPush();
   });
   $("name").addEventListener("change", function(){
     name = this.value.trim();
     saveName();
+    scheduleCloudPush();
   });
   $("monthBtn").addEventListener("click", function(e){
     e.stopPropagation();

@@ -254,14 +254,19 @@ body{
   background:rgba(20,22,26,.45);display:flex;align-items:center;justify-content:center;padding:24px;
 }
 .login-gate{
-  padding:14vh 4px 8px;
+  min-height:calc(100dvh - 42px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px 4px 24px;
+  box-sizing:border-box;
 }
 body:not(.authed) .topbar,
 body:not(.authed) .tab,
 body:not(.authed) .bottom-nav{display:none}
 .login-card{
   position:relative;
-  width:100%;max-width:360px;margin:0 auto;background:var(--card);border:1px solid var(--card-border);
+  width:100%;max-width:360px;margin:auto;background:var(--card);border:1px solid var(--card-border);
   border-radius:20px;padding:24px 24px 14px;box-shadow:0 8px 28px rgba(20,22,26,.08);
 }
 .login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:16px;letter-spacing:1px}

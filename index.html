@@ -1805,6 +1805,7 @@ body:not(.authed) .bottom-nav{display:none}
       if(!el) return;
       function unlock(){ if(el.readOnly) el.readOnly = false; }
       el.addEventListener("pointerdown", unlock);
+      el.addEventListener("touchstart", unlock);
       el.addEventListener("focus", unlock);
       el.addEventListener("click", unlock);
     });

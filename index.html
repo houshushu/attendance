@@ -254,13 +254,14 @@ body{
   background:rgba(20,22,26,.45);display:flex;align-items:center;justify-content:center;padding:24px;
 }
 .login-gate{
-  position:fixed;top:0;left:0;right:0;bottom:0;z-index:80;
-  background:var(--bg);display:flex;align-items:flex-start;justify-content:center;
-  padding:24px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:14vh 4px 8px;
 }
+body:not(.authed) .topbar,
+body:not(.authed) .tab,
+body:not(.authed) .bottom-nav{display:none}
 .login-card{
   position:relative;
-  width:100%;max-width:360px;margin:56px auto 0;background:var(--card);border:1px solid var(--card-border);
+  width:100%;max-width:360px;margin:0 auto;background:var(--card);border:1px solid var(--card-border);
   border-radius:20px;padding:24px 24px 14px;box-shadow:0 8px 28px rgba(20,22,26,.08);
 }
 .login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:16px;letter-spacing:1px}
@@ -1421,7 +1422,8 @@ body{
   }
   function renderAccount(){
     var logged = !!auth;
-    $("loginGate").style.display = logged ? "none" : "flex";
+    document.body.classList.toggle("authed", logged);
+    $("loginGate").style.display = logged ? "none" : "block";
     $("btnLogout").style.display = logged ? "block" : "none";
     var nav = document.querySelector(".bottom-nav");
     if(nav) nav.style.display = logged ? "block" : "none";
@@ -1818,26 +1820,6 @@ body{
     }else{
       renderAccount();
     }
-  })();
-  (function authKeyboardFit(){
-    var gate = document.querySelector(".login-gate");
-    if(!gate || !window.visualViewport) return;
-    var fitTimer = null;
-    function applyFit(){
-      var vh = window.visualViewport.height;
-      var card = document.querySelector(".login-card");
-      if(!card) return;
-      if(vh >= window.innerHeight - 1){
-        gate.scrollTop = 0;
-        return;
-      }
-      var target = Math.max(0, (card.offsetTop + card.offsetHeight) - vh + 12);
-      gate.scrollTop = target;
-    }
-    window.visualViewport.addEventListener("resize", function(){
-      clearTimeout(fitTimer);
-      fitTimer = setTimeout(applyFit, 300);
-    });
   })();
   renderProject();
   renderAll();

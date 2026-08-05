@@ -263,7 +263,7 @@ body{
   width:100%;max-width:360px;margin:auto;background:var(--card);border:1px solid var(--card-border);
   border-radius:20px;padding:24px 24px 14px;box-shadow:0 8px 28px rgba(20,22,26,.08);
 }
-.login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:20px;letter-spacing:1px}
+.login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:16px;letter-spacing:1px}
 .login-card #btnAuthMain{margin-top:26px}
 .login-card .sync-status{
   position:absolute;top:calc(100% + 8px);left:0;right:0;margin:0;
@@ -1816,6 +1816,40 @@ body{
         .catch(function(){ renderAccount(); });
     }else{
       renderAccount();
+    }
+  })();
+  (function authKeyboardLock(){
+    var authScrollLocked = null;
+    function lockAuthScroll(){
+      var gate = document.querySelector(".login-gate");
+      if(!gate) return;
+      if(authScrollLocked === null){
+        setTimeout(function(){
+          var card = document.querySelector(".login-card");
+          if(!card) return;
+          var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+          var target = Math.max(0, card.offsetTop + card.offsetHeight / 2 - vh / 2);
+          gate.scrollTop = target;
+          authScrollLocked = target;
+        }, 60);
+      }else{
+        requestAnimationFrame(function(){
+          if(Math.abs(gate.scrollTop - authScrollLocked) > 1) gate.scrollTop = authScrollLocked;
+        });
+      }
+    }
+    ["authName", "authPassword", "authCode"].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.addEventListener("focus", lockAuthScroll);
+    });
+    if(window.visualViewport){
+      window.visualViewport.addEventListener("resize", function(){
+        authScrollLocked = null;
+        var gate = document.querySelector(".login-gate");
+        if(gate && window.visualViewport.height >= window.innerHeight - 1){
+          gate.scrollTop = 0;
+        }
+      });
     }
   })();
   renderProject();

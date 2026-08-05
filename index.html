@@ -265,6 +265,7 @@ body:not(.authed) .page-scroll{overscroll-behavior-y:contain;padding-bottom:40px
 body:not(.authed) .topbar,
 body:not(.authed) .tab,
 body:not(.authed) .bottom-nav{display:none}
+body.auth-cache .login-gate{display:none}
 .login-card{
   width:100%;max-width:360px;margin:auto;background:var(--card);border:1px solid var(--card-border);
   border-radius:20px;padding:28px 24px 22px;box-shadow:0 8px 28px rgba(20,22,26,.08);
@@ -337,6 +338,7 @@ body:not(.authed) .bottom-nav{display:none}
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem("attendance_auth"))document.body.classList.add("auth-cache")}catch(e){}</script>
 <div class="page-scroll">
 <div id="app">
   <header class="topbar">
@@ -1422,6 +1424,7 @@ body:not(.authed) .bottom-nav{display:none}
   }
   function renderAccount(){
     var logged = !!auth;
+    document.body.classList.remove("auth-cache");
     document.body.classList.toggle("authed", logged);
     if(typeof setPullRefreshGuard === "function") setPullRefreshGuard();
     $("loginGate").style.display = logged ? "none" : "";

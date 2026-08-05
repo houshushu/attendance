@@ -1822,7 +1822,8 @@ body{
   (function authKeyboardFit(){
     var gate = document.querySelector(".login-gate");
     if(!gate || !window.visualViewport) return;
-    window.visualViewport.addEventListener("resize", function(){
+    var fitTimer = null;
+    function applyFit(){
       var vh = window.visualViewport.height;
       var card = document.querySelector(".login-card");
       if(!card) return;
@@ -1832,6 +1833,10 @@ body{
       }
       var target = Math.max(0, (card.offsetTop + card.offsetHeight) - vh + 12);
       gate.scrollTop = target;
+    }
+    window.visualViewport.addEventListener("resize", function(){
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(applyFit, 300);
     });
   })();
   renderProject();

@@ -68,14 +68,14 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 *{scrollbar-width:none;-ms-overflow-style:none}
 *::-webkit-scrollbar{width:0;height:0;display:none}
-html{margin:0;padding:0;background:var(--bg);height:100%;overscroll-behavior-x:none;overscroll-behavior-y:contain}
+html{margin:0;padding:0;background:var(--bg);height:100%;overscroll-behavior-x:none}
 body{
   margin:0;padding:0;height:100%;overflow:hidden;
   background:var(--bg);
   color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
   touch-action:pan-y;
-  overscroll-behavior-x:none;overscroll-behavior-y:contain;
+  overscroll-behavior-x:none;
 }
 .page-scroll{
   height:100%;
@@ -86,7 +86,7 @@ body{
   padding-bottom:calc(84px + env(safe-area-inset-bottom));
   box-sizing:border-box;
 }
-body:not(.authed) .page-scroll{overscroll-behavior-y:contain;padding-bottom:0}
+body:not(.authed) .page-scroll{overscroll-behavior-y:contain;padding-bottom:40px}
 .page-scroll::-webkit-scrollbar{display:none;width:0}
 #app{max-width:560px;margin:0 auto;padding:14px 16px 10px}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 14px}
@@ -1423,6 +1423,7 @@ body:not(.authed) .bottom-nav{display:none}
   function renderAccount(){
     var logged = !!auth;
     document.body.classList.toggle("authed", logged);
+    if(typeof setPullRefreshGuard === "function") setPullRefreshGuard();
     $("loginGate").style.display = logged ? "none" : "";
     $("btnLogout").style.display = logged ? "block" : "none";
     var nav = document.querySelector(".bottom-nav");
@@ -1806,41 +1807,52 @@ body:not(.authed) .bottom-nav{display:none}
     function reset(){
       if(document.body.classList.contains("authed")) return;
       if(scroller.scrollTop !== 0) scroller.scrollTop = 0;
-      if(window.scrollY !== 0) window.scrollTo(0, 0);
+      window.scrollTo(0, 0);
+      window.scrollBy(0, 1);
+      window.scrollBy(0, -1);
     }
+    if("scrollRestoration" in history) history.scrollRestoration = "manual";
     reset();
-    function keyboardClosed(){
-      return !window.visualViewport || window.visualViewport.height >= window.innerHeight - 60;
-    }
-    var wasOpen = false;
-    function onVvChange(){
-      var open = !keyboardClosed();
-      if(!open && wasOpen){
-        setTimeout(reset, 60);
-        setTimeout(reset, 250);
-        setTimeout(reset, 600);
+    // 标准 iOS 修复：输入框失焦时把页面滚回顶部；在输入框之间切换时取消
+    var authResetTimer = null;
+    $("authForm").addEventListener("focusout", function(ev){
+      var t = ev.target;
+      if(t && t.tagName && t.tagName.toLowerCase() === "input"){
+        authResetTimer = setTimeout(reset, 0);
       }
-      wasOpen = open;
-    }
-    if(window.visualViewport){
-      window.visualViewport.addEventListener("resize", onVvChange);
-      window.visualViewport.addEventListener("scroll", onVvChange);
-    }
-    ["authName", "authPassword", "authCode"].forEach(function(id){
-      var el = $(id);
-      if(!el) return;
-      el.addEventListener("blur", function(){
-        setTimeout(function(){
-          if(keyboardClosed()) reset();
-        }, 200);
-      });
     });
+    $("authForm").addEventListener("focusin", function(ev){
+      var t = ev.target;
+      if(t && t.tagName && t.tagName.toLowerCase() === "input"){
+        clearTimeout(authResetTimer);
+      }
+    });
+    // 兜底：visualViewport 基线检测（不依赖 innerHeight，兼容地址栏状态）
+    if(window.visualViewport){
+      var baseline = window.visualViewport.height;
+      var wasOpen = false;
+      function onVv(){
+        var vh = window.visualViewport.height;
+        if(vh > baseline) baseline = vh;
+        var open = vh < baseline - 80;
+        if(!open && wasOpen){
+          setTimeout(reset, 80);
+          setTimeout(reset, 300);
+        }
+        wasOpen = open;
+      }
+      window.visualViewport.addEventListener("resize", onVv);
+      window.visualViewport.addEventListener("scroll", onVv);
+    }
   })();
-  (function blockPullRefresh(){
-    document.addEventListener("touchmove", function(ev){
-      if(!document.body.classList.contains("authed")) ev.preventDefault();
-    }, { passive: false });
-  })();
+  function pullRefreshGuard(ev){ ev.preventDefault(); }
+  function setPullRefreshGuard(){
+    document.removeEventListener("touchmove", pullRefreshGuard, { passive: false });
+    if(!document.body.classList.contains("authed")){
+      document.addEventListener("touchmove", pullRefreshGuard, { passive: false });
+    }
+  }
+  setPullRefreshGuard();
 
   (function initAuth(){
     if(auth){

@@ -264,7 +264,8 @@ body{
   border-radius:20px;padding:24px 24px 14px;box-shadow:0 8px 28px rgba(20,22,26,.08);
 }
 .login-brand{font-size:20px;font-weight:700;text-align:center;margin-bottom:16px;letter-spacing:1px}
-.login-card #btnAuthMain{margin-top:26px}
+.login-card .field{margin-bottom:8px}
+.login-card #btnAuthMain{margin-top:20px}
 .login-card .sync-status{
   position:absolute;top:calc(100% + 8px);left:0;right:0;margin:0;
   text-align:center;line-height:1.5;
@@ -1818,39 +1819,20 @@ body{
       renderAccount();
     }
   })();
-  (function authKeyboardLock(){
-    var authScrollLocked = null;
-    function lockAuthScroll(){
-      var gate = document.querySelector(".login-gate");
-      if(!gate) return;
-      if(authScrollLocked === null){
-        setTimeout(function(){
-          var card = document.querySelector(".login-card");
-          if(!card) return;
-          var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-          var target = Math.max(0, card.offsetTop + card.offsetHeight / 2 - vh / 2);
-          gate.scrollTop = target;
-          authScrollLocked = target;
-        }, 60);
-      }else{
-        requestAnimationFrame(function(){
-          if(Math.abs(gate.scrollTop - authScrollLocked) > 1) gate.scrollTop = authScrollLocked;
-        });
+  (function authKeyboardFit(){
+    var gate = document.querySelector(".login-gate");
+    if(!gate || !window.visualViewport) return;
+    window.visualViewport.addEventListener("resize", function(){
+      var vh = window.visualViewport.height;
+      var card = document.querySelector(".login-card");
+      if(!card) return;
+      if(vh >= window.innerHeight - 1){
+        gate.scrollTop = 0;
+        return;
       }
-    }
-    ["authName", "authPassword", "authCode"].forEach(function(id){
-      var el = document.getElementById(id);
-      if(el) el.addEventListener("focus", lockAuthScroll);
+      var target = Math.max(0, (card.offsetTop + card.offsetHeight) - vh + 12);
+      gate.scrollTop = target;
     });
-    if(window.visualViewport){
-      window.visualViewport.addEventListener("resize", function(){
-        authScrollLocked = null;
-        var gate = document.querySelector(".login-gate");
-        if(gate && window.visualViewport.height >= window.innerHeight - 1){
-          gate.scrollTop = 0;
-        }
-      });
-    }
   })();
   renderProject();
   renderAll();

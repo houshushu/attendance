@@ -246,7 +246,6 @@ body:not(.authed) .page-scroll{overscroll-behavior-y:contain;padding-bottom:40px
 .text-btn{background:none;border:none;color:var(--accent);font-size:13px;padding:8px 4px;cursor:pointer}
 .text-btn.danger{color:var(--red)}
 .del-row{display:flex;justify-content:center;margin-top:10px}
-.undo-row{text-align:center;margin-top:6px}
 .save-hint{text-align:center;color:var(--green);font-size:12px;height:16px;opacity:0;transition:opacity .3s;margin-top:4px}
 .save-hint.show{opacity:1}
 .modal-mask{
@@ -426,9 +425,6 @@ body.auth-cache .login-gate{display:none}
       <div class="del-row" id="deleteRow" style="display:none">
         <button class="text-btn danger" id="btnDelete">删除该天记录</button>
       </div>
-      <div class="undo-row" id="undoRow" style="display:none">
-        <button class="text-btn" id="btnUndo">撤销上一步</button>
-      </div>
       <div class="save-hint" id="saveHint">已自动保存</div>
 
     </div>
@@ -527,7 +523,7 @@ body.auth-cache .login-gate{display:none}
 <div class="modal-mask" id="confirmModal" style="display:none">
   <div class="modal">
     <h3>删除所有记录</h3>
-    <p class="modal-text">确定要删除全部考勤记录吗？删除后无法直接恢复（可通过“撤销上一步”找回）。</p>
+    <p class="modal-text">确定要删除全部考勤记录吗？删除后无法恢复。</p>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnConfirmCancel">取消</button>
       <button class="btn btn-danger" id="btnConfirmDelete">确认删除</button>
@@ -584,7 +580,6 @@ body.auth-cache .login-gate{display:none}
   var projectName = loadProject();
   var name = loadName();
   var filterYm = todayKey().slice(0,7);
-  var lastSnapshot = null;
   var fromHistory = false;
   var saveTimer = null;
   var saveHintTimer = null;
@@ -881,10 +876,6 @@ body.auth-cache .login-gate{display:none}
     $("name").value = name;
   }
 
-  function renderUndo(){
-    $("undoRow").style.display = lastSnapshot ? "block" : "none";
-  }
-
   function escHtml(s){
     return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
@@ -901,7 +892,6 @@ body.auth-cache .login-gate{display:none}
     renderMonthSelect();
     renderProject();
     renderName();
-    renderUndo();
   }
 
   // ---------- 自动保存 / 删除 ----------
@@ -910,9 +900,6 @@ body.auth-cache .login-gate{display:none}
     el.classList.add("show");
     clearTimeout(saveHintTimer);
     saveHintTimer = setTimeout(function(){ el.classList.remove("show"); }, 1200);
-  }
-  function snapshot(){
-    lastSnapshot = JSON.parse(JSON.stringify(data));
   }
   function debounceSave(){
     clearTimeout(saveTimer);
@@ -936,7 +923,6 @@ body.auth-cache .login-gate{display:none}
     if(JSON.stringify(current) === JSON.stringify(next)){
       return;
     }else{
-      snapshot();
       if(next){
         data[editingDate] = next;
       }else{
@@ -1626,7 +1612,6 @@ body.auth-cache .login-gate{display:none}
     renderEditor();
   }
   $("btnClock").addEventListener("click", function(){
-    snapshot();
     var r = currentFields();
     if(r.attended){
       if(confirm("取消 " + displayDate(editingDate) + " 的打卡吗？")){
@@ -1669,7 +1654,6 @@ body.auth-cache .login-gate{display:none}
     var k = b.getAttribute("data-key");
     var r = data[k] || {};
     if(r.attended){ toast(displayDate(k) + " 已打卡"); return; }
-    snapshot();
     r.attended = true;
     r.clockedAt = nowHM();
     data[k] = r;
@@ -1684,18 +1668,8 @@ body.auth-cache .login-gate{display:none}
   document.addEventListener("visibilitychange", function(){
     if(document.hidden) saveCurrent();
   });
-  $("btnUndo").addEventListener("click", function(){
-    if(!lastSnapshot) return;
-    data = migrate(JSON.parse(JSON.stringify(lastSnapshot)));
-    lastSnapshot = null;
-    persist();
-    scheduleCloudPush();
-    renderAll();
-    toast("已撤销上一步");
-  });
   $("btnDelete").addEventListener("click", function(){
     if(!confirm("确定删除 " + displayDate(editingDate) + " 的记录吗？")) return;
-    snapshot();
     delete data[editingDate];
     persist();
     scheduleCloudPush();
@@ -1728,7 +1702,6 @@ body.auth-cache .login-gate{display:none}
   function applyImport(recs, projectVal, nameVal, mode){
     if(!recs || typeof recs !== "object" || Array.isArray(recs)) throw new Error("bad");
     recs = migrate(recs);
-    snapshot();
     if(mode === "merge"){
       var added = 0;
       Object.keys(recs).forEach(function(k){
@@ -1742,7 +1715,7 @@ body.auth-cache .login-gate{display:none}
       renderAll();
       toast("合并导入完成，新增 " + added + " 天");
     }else{
-      if(!confirm("导入将覆盖当前全部数据，确定继续吗？")){ lastSnapshot = null; return; }
+      if(!confirm("导入将覆盖当前全部数据，确定继续吗？")){ return; }
       data = recs;
       if(projectVal !== null) projectName = projectVal;
       if(nameVal !== null) name = nameVal;
@@ -1754,7 +1727,6 @@ body.auth-cache .login-gate{display:none}
     }
   }
   $("btnClearAll").addEventListener("click", function(){
-    snapshot();
     $("confirmModal").style.display = "flex";
   });
   $("btnConfirmCancel").addEventListener("click", function(){
@@ -1766,7 +1738,7 @@ body.auth-cache .login-gate{display:none}
     scheduleCloudPush();
     renderAll();
     $("confirmModal").style.display = "none";
-    toast("已删除全部记录（可点“撤销上一步”找回）");
+    toast("已删除全部记录");
   });
   $("btnSyncMerge").addEventListener("click", function(){ applySyncChoice("merge"); });
   $("btnSyncCloud").addEventListener("click", function(){ applySyncChoice("cloud"); });

@@ -86,7 +86,7 @@ body{
   padding-bottom:calc(84px + env(safe-area-inset-bottom));
   box-sizing:border-box;
 }
-body:not(.authed) .page-scroll{overscroll-behavior-y:contain;padding-bottom:40px}
+body:not(.authed) .page-scroll{overscroll-behavior-y:contain;padding-bottom:320px}
 .page-scroll::-webkit-scrollbar{display:none;width:0}
 #app{max-width:560px;margin:0 auto;padding:14px 16px 10px}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 14px}
@@ -1425,6 +1425,12 @@ body:not(.authed) .bottom-nav{display:none}
     document.body.classList.toggle("authed", logged);
     if(typeof setPullRefreshGuard === "function") setPullRefreshGuard();
     $("loginGate").style.display = logged ? "none" : "";
+    if(logged){
+      var sc = document.querySelector(".page-scroll");
+      var gate = document.querySelector(".login-gate");
+      if(sc) sc.style.height = "";
+      if(gate) gate.style.minHeight = "";
+    }
     $("btnLogout").style.display = logged ? "block" : "none";
     var nav = document.querySelector(".bottom-nav");
     if(nav) nav.style.display = logged ? "block" : "none";
@@ -1804,8 +1810,25 @@ body:not(.authed) .bottom-nav{display:none}
   (function keepLoginCentered(){
     var scroller = document.querySelector(".page-scroll");
     if(!scroller) return;
+    var loginFrozen = false;
+    function freezeLoginLayout(){
+      if(loginFrozen || document.body.classList.contains("authed")) return;
+      var gate = document.querySelector(".login-gate");
+      if(!gate) return;
+      scroller.style.height = scroller.getBoundingClientRect().height + "px";
+      gate.style.minHeight = gate.getBoundingClientRect().height + "px";
+      loginFrozen = true;
+    }
+    function thawLoginLayout(){
+      if(!loginFrozen) return;
+      scroller.style.height = "";
+      var gate = document.querySelector(".login-gate");
+      if(gate) gate.style.minHeight = "";
+      loginFrozen = false;
+    }
     function reset(){
       if(document.body.classList.contains("authed")) return;
+      thawLoginLayout();
       if(scroller.scrollTop !== 0) scroller.scrollTop = 0;
       window.scrollTo(0, 0);
       window.scrollBy(0, 1);
@@ -1831,19 +1854,40 @@ body:not(.authed) .bottom-nav{display:none}
     if(window.visualViewport){
       var baseline = window.visualViewport.height;
       var wasOpen = false;
+      function scrollCardAboveKeyboard(){
+        if(document.body.classList.contains("authed")) return;
+        var card = document.querySelector(".login-card");
+        if(!card) return;
+        var vh = window.visualViewport.height;
+        var cardBottom = card.getBoundingClientRect().bottom + scroller.scrollTop;
+        var target = cardBottom - vh + 16;
+        if(target < 0) target = 0;
+        scroller.scrollTop = target;
+        window.scrollTo(0, 0);
+      }
       function onVv(){
         var vh = window.visualViewport.height;
         if(vh > baseline) baseline = vh;
         var open = vh < baseline - 80;
-        if(!open && wasOpen){
+        if(open){
+          scrollCardAboveKeyboard();
+          wasOpen = true;
+        }else if(wasOpen){
           setTimeout(reset, 80);
           setTimeout(reset, 300);
+          wasOpen = false;
         }
-        wasOpen = open;
       }
       window.visualViewport.addEventListener("resize", onVv);
       window.visualViewport.addEventListener("scroll", onVv);
     }
+    ["authName", "authPassword", "authCode"].forEach(function(id){
+      var el = $(id);
+      if(!el) return;
+      el.addEventListener("pointerdown", freezeLoginLayout);
+      el.addEventListener("touchstart", freezeLoginLayout);
+      el.addEventListener("focus", freezeLoginLayout);
+    });
   })();
   function pullRefreshGuard(ev){ ev.preventDefault(); }
   function setPullRefreshGuard(){
